@@ -1,0 +1,782 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>유닛 교전 시뮬레이터 v0.0.1</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <style>
+        body { font-family: 'Noto Sans KR', sans-serif; overflow: hidden; }
+        .log-entry { padding: 2px 0; border-bottom: 1px solid #eee; font-size: 11px; }
+        .log-attack { color: #e11d48; }
+        .log-defend { color: #2563eb; }
+        .log-evade { color: #16a34a; }
+        .log-info { color: #6b7280; }
+        .log-sys { color: #9333ea; font-style: italic; }
+        
+        ::-webkit-scrollbar { width: 6px; }
+        ::-webkit-scrollbar-track { background: #f1f1f1; }
+        ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 3px; }
+        ::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+
+        input[type=number] { padding: 1px 4px; font-size: 0.85em; height: 1.5rem; }
+        label { font-size: 0.75rem; color: #4b5563; }
+    </style>
+</head>
+<body class="bg-gray-100 h-screen flex flex-col">
+
+    <!-- Header & Controls -->
+    <header class="bg-white shadow p-2 flex justify-between items-center z-10 h-12">
+        <h1 class="text-base font-bold text-gray-800 ml-2"><i class="fa-solid fa-swords"></i> 유닛 교전 시뮬레이터 v0.0.1</h1>
+        <div class="flex gap-2 items-center">
+            <span class="text-xs text-gray-500 mr-2">Space: 일시정지</span>
+            <button onclick="sim.togglePause()" id="btnPause" class="px-3 py-0.5 bg-yellow-500 text-white rounded text-sm hover:bg-yellow-600 font-bold transition">일시정지</button>
+            <button onclick="sim.reset()" class="px-3 py-0.5 bg-gray-500 text-white rounded text-sm hover:bg-gray-600 transition">리셋</button>
+            <select id="speedSelect" onchange="sim.setSpeed(this.value)" class="border rounded px-2 py-0.5 text-sm bg-white">
+                <option value="0.1">x0.1 (분석)</option>
+                <option value="0.5">x0.5 (느림)</option>
+                <option value="1.0" selected>x1.0 (정상)</option>
+                <option value="2.0">x2.0 (빠름)</option>
+                <option value="10.0">x10.0 (초고속)</option>
+            </select>
+        </div>
+    </header>
+
+    <!-- Main Content -->
+    <div class="flex flex-1 overflow-hidden">
+        
+        <!-- Left: Settings Panel -->
+        <div class="w-[450px] bg-white border-r overflow-y-auto flex flex-col shadow-lg z-10">
+            <div class="p-3 space-y-4">
+                
+                <!-- Unit Settings -->
+                <div class="grid grid-cols-2 gap-2">
+                    <!-- Blue Team -->
+                    <div class="bg-blue-50 p-2 rounded border border-blue-200">
+                        <div class="flex justify-between items-center mb-1">
+                            <h3 class="font-bold text-blue-800 text-xs">Blue Team</h3>
+                            <select id="preset_A" onchange="sim.loadPreset('A', this.value)" class="text-[10px] border rounded w-20">
+                                <option value="">선택...</option>
+                            </select>
+                        </div>
+                        <div class="space-y-1">
+                            <div class="flex justify-between"><label>체력</label><input type="number" id="hp_A" class="w-16 border rounded text-right"></div>
+                            <div class="flex justify-between"><label>공격력</label><input type="number" id="atk_A" class="w-16 border rounded text-right"></div>
+                            <div class="flex justify-between"><label>공속</label><input type="number" id="as_A" step="0.1" class="w-16 border rounded text-right"></div>
+                            <div class="flex justify-between"><label>사거리</label><input type="number" id="rng_A" step="0.1" class="w-16 border rounded text-right"></div>
+                            <div class="flex justify-between"><label>방패</label><input type="number" id="shd_A" class="w-16 border rounded text-right"></div>
+                            <div class="flex justify-between"><label>갑옷</label><input type="number" id="arm_A" class="w-16 border rounded text-right"></div>
+                            <div class="flex justify-between"><label>사기</label><input type="number" id="mor_A" class="w-16 border rounded text-right"></div>
+                            <div class="flex justify-between"><label>스테미너</label><input type="number" id="mst_A" class="w-16 border rounded text-right"></div>
+                            <div class="flex justify-between"><label>이동속도</label><input type="number" id="spd_A" class="w-16 border rounded text-right"></div>
+                        </div>
+                    </div>
+
+                    <!-- Red Team -->
+                    <div class="bg-red-50 p-2 rounded border border-red-200">
+                        <div class="flex justify-between items-center mb-1">
+                            <h3 class="font-bold text-red-800 text-xs">Red Team</h3>
+                            <select id="preset_B" onchange="sim.loadPreset('B', this.value)" class="text-[10px] border rounded w-20">
+                                <option value="">선택...</option>
+                            </select>
+                        </div>
+                        <div class="space-y-1">
+                            <div class="flex justify-between"><label>체력</label><input type="number" id="hp_B" class="w-16 border rounded text-right"></div>
+                            <div class="flex justify-between"><label>공격력</label><input type="number" id="atk_B" class="w-16 border rounded text-right"></div>
+                            <div class="flex justify-between"><label>공속</label><input type="number" id="as_B" step="0.1" class="w-16 border rounded text-right"></div>
+                            <div class="flex justify-between"><label>사거리</label><input type="number" id="rng_B" step="0.1" class="w-16 border rounded text-right"></div>
+                            <div class="flex justify-between"><label>방패</label><input type="number" id="shd_B" class="w-16 border rounded text-right"></div>
+                            <div class="flex justify-between"><label>갑옷</label><input type="number" id="arm_B" class="w-16 border rounded text-right"></div>
+                            <div class="flex justify-between"><label>사기</label><input type="number" id="mor_B" class="w-16 border rounded text-right"></div>
+                            <div class="flex justify-between"><label>스테미너</label><input type="number" id="mst_B" class="w-16 border rounded text-right"></div>
+                            <div class="flex justify-between"><label>이동속도</label><input type="number" id="spd_B" class="w-16 border rounded text-right"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <button onclick="sim.applyStats()" class="w-full bg-indigo-600 text-white py-1.5 rounded shadow hover:bg-indigo-700 font-bold text-xs transition">
+                    <i class="fa-solid fa-play"></i> 적용 및 시작
+                </button>
+
+                <!-- Global Config -->
+                <div class="bg-gray-50 p-2 rounded border space-y-3">
+                    <h3 class="font-bold text-gray-700 text-xs border-b pb-1">⚙️ 행동 결정 (AI)</h3>
+                    <div class="grid grid-cols-2 gap-x-4 gap-y-1">
+                        <div class="flex justify-between items-center"><label>최대 공격확률</label><input type="number" id="cfg_atk_prob_max" value="1.0" step="0.1" class="w-16 border text-right"></div>
+                        <div class="flex justify-between items-center"><label>최소 공격확률</label><input type="number" id="cfg_atk_prob_min" value="0.3" step="0.1" class="w-16 border text-right"></div>
+                        <div class="flex justify-between items-center col-span-2"><label>사기 임계값 (이하일때 최소확률)</label><input type="number" id="cfg_morale_threshold" value="0.2" step="0.1" class="w-16 border text-right"></div>
+                    </div>
+
+                    <h3 class="font-bold text-gray-700 text-xs border-b pb-1">⚙️ 전투 밸런스</h3>
+                    <div class="grid grid-cols-2 gap-x-4 gap-y-1">
+                        <div class="flex justify-between items-center" title="0에 가까울수록 영향없음, 1이면 비율만큼 감소"><label class="text-indigo-700 font-bold">사기 영향력(0~1)</label><input type="number" id="cfg_morale_inf" value="0.4" step="0.1" class="w-16 border text-right bg-indigo-50"></div>
+                        <div class="flex justify-between items-center" title="0에 가까울수록 영향없음, 1이면 비율만큼 감소"><label class="text-indigo-700 font-bold">스테미너 영향력</label><input type="number" id="cfg_stamina_inf" value="0.3" step="0.1" class="w-16 border text-right bg-indigo-50"></div>
+                        <div class="flex justify-between items-center"><label>기본 회피율</label><input type="number" id="cfg_base_evade" value="0.1" step="0.05" class="w-16 border text-right"></div>
+                        <div class="flex justify-between items-center"><label>회피 선택 보정(x)</label><input type="number" id="cfg_evade_bonus" value="2.0" step="0.1" class="w-16 border text-right"></div>
+                        <div class="flex justify-between items-center"><label>방어 선택 보정(x)</label><input type="number" id="cfg_def_bonus" value="1.5" step="0.1" class="w-16 border text-right"></div>
+                        <div class="flex justify-between items-center"><label>방패 회피 페널티</label><input type="number" id="cfg_shield_pen" value="0.5" step="0.1" class="w-16 border text-right"></div>
+                        <div class="flex justify-between items-center"><label>갑옷 회피 페널티</label><input type="number" id="cfg_armor_pen" value="0.5" step="0.1" class="w-16 border text-right"></div>
+                    </div>
+
+                    <h3 class="font-bold text-gray-700 text-xs border-b pb-1">⚙️ 인터벌 & 비용</h3>
+                    <div class="grid grid-cols-2 gap-x-4 gap-y-1">
+                        <div class="flex justify-between items-center"><label>공격 전 딜레이</label><input type="number" id="cfg_pre_delay" value="0.5" step="0.1" class="w-16 border text-right"></div>
+                        <div class="flex justify-between items-center"><label>회피 후 인터벌</label><input type="number" id="cfg_interval_evade" value="0.5" step="0.1" class="w-16 border text-right"></div>
+                        <div class="flex justify-between items-center"><label>방어 후 인터벌</label><input type="number" id="cfg_interval_block" value="0.8" step="0.1" class="w-16 border text-right"></div>
+                        <div class="flex justify-between items-center"><label>공격 스테미너</label><input type="number" id="cfg_attack_cost" value="10" class="w-16 border text-right"></div>
+                        <div class="flex justify-between items-center"><label>회피 스테미너</label><input type="number" id="cfg_evade_cost" value="5" class="w-16 border text-right"></div>
+                        <div class="flex justify-between items-center"><label>스테미너 회복/s</label><input type="number" id="cfg_stamina_regen" value="5" class="w-16 border text-right"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Center: Visualizer -->
+        <div class="flex-1 bg-slate-800 relative flex justify-center items-center overflow-hidden">
+            <canvas id="battleCanvas" class="shadow-2xl rounded-lg"></canvas>
+            
+            <!-- Result Overlay -->
+            <div id="winnerOverlay" class="absolute inset-0 bg-black/60 backdrop-blur-sm flex flex-col justify-center items-center hidden text-white z-50">
+                <h2 id="winnerText" class="text-4xl font-extrabold mb-4 animate-bounce">승리!</h2>
+                <button onclick="sim.applyStats()" class="px-6 py-2 bg-white text-black font-bold rounded-full hover:bg-gray-200 transition">다시 하기</button>
+            </div>
+        </div>
+
+        <!-- Right: Log -->
+        <div class="w-72 bg-white border-l flex flex-col shadow-lg z-10">
+            <div class="p-2 border-b bg-gray-50 font-bold flex justify-between items-center text-gray-700 text-xs">
+                <span><i class="fa-solid fa-list-ul"></i> 전투 로그</span>
+                <button onclick="document.getElementById('logContainer').innerHTML=''" class="text-gray-400 hover:text-red-500 transition"><i class="fa-solid fa-trash"></i></button>
+            </div>
+            <div id="logContainer" class="flex-1 overflow-y-auto p-2 font-mono leading-relaxed space-y-1 bg-white">
+                <!-- Logs go here -->
+            </div>
+        </div>
+    </div>
+
+<script>
+/**
+ * Battle Simulator Logic v1.5 (Fix)
+ */
+
+// --- Constants & Config ---
+const RANGE_SCALE = 40; 
+const UNIT_PRESETS = {
+    "징집병": { hp: 20, atk: 10, as: 1.0, rng: 1.0, spd: 40, shd: 0, arm: 1, mst: 60, mor: 40 },
+    "경보병": { hp: 30, atk: 15, as: 0.9, rng: 1.0, spd: 45, shd: 3, arm: 2, mst: 65, mor: 60 },
+    "중보병": { hp: 35, atk: 15, as: 0.7, rng: 1.2, spd: 35, shd: 5, arm: 5, mst: 75, mor: 80 }
+};
+
+const STATES = {
+    IDLE: '대기',
+    MOVING: '이동',
+    PRE_ATTACK: '공격준비',
+    RECOVER: '휴식',
+    INTERVAL: '후딜레이',
+    DEFENDING: '방어태세', 
+    DEAD: '사망'
+};
+
+const INTENTS = {
+    NONE: '...',
+    ENGAGE: '접근',
+    ATTACK: '공격!',
+    DEFEND: '방어중',
+    REST: '숨고르기'
+};
+
+// --- Global Config Manager ---
+const GlobalConfig = {
+    get: () => ({
+        // AI Logic
+        atkProbMax: Number(document.getElementById('cfg_atk_prob_max').value),
+        atkProbMin: Number(document.getElementById('cfg_atk_prob_min').value),
+        moraleThreshold: Number(document.getElementById('cfg_morale_threshold').value),
+        
+        // Damage Influences
+        moraleInf: Number(document.getElementById('cfg_morale_inf').value),
+        staminaInf: Number(document.getElementById('cfg_stamina_inf').value),
+
+        // Balance
+        baseEvade: Number(document.getElementById('cfg_base_evade').value),
+        evadeBonus: Number(document.getElementById('cfg_evade_bonus').value),
+        defBonus: Number(document.getElementById('cfg_def_bonus').value),
+        shieldPen: Number(document.getElementById('cfg_shield_pen').value),
+        armorPen: Number(document.getElementById('cfg_armor_pen').value),
+        
+        // Intervals & Costs
+        preDelay: Number(document.getElementById('cfg_pre_delay').value),
+        intervalEvade: Number(document.getElementById('cfg_interval_evade').value),
+        intervalBlock: Number(document.getElementById('cfg_interval_block').value),
+        attackCost: Number(document.getElementById('cfg_attack_cost').value),
+        evadeCost: Number(document.getElementById('cfg_evade_cost').value),
+        staminaRegen: Number(document.getElementById('cfg_stamina_regen').value),
+        moveMult: 1.5
+    })
+};
+
+// --- Unit Class ---
+class Unit {
+    constructor(id, team, x, y, stats) {
+        this.id = id;
+        this.team = team;
+        this.x = x;
+        this.y = y;
+        
+        // Stats
+        this.maxHp = stats.hp;
+        this.hp = stats.hp;
+        this.atk = stats.atk;
+        this.atkSpd = stats.as;
+        this.range = stats.rng * RANGE_SCALE; // Convert to pixels
+        this.moveSpeed = stats.spd;
+        this.shield = stats.shd;
+        this.armor = stats.arm;
+        this.maxStamina = stats.mst;
+        this.stamina = stats.mst;
+        this.maxMorale = stats.mor;
+        this.morale = stats.mor;
+        
+        // State
+        this.state = STATES.IDLE;
+        this.stateTimer = 0;
+        this.intent = INTENTS.ENGAGE;
+        
+        // Animation
+        this.animOffsetX = 0;
+        this.animOffsetY = 0;
+        this.visualEffects = []; 
+        
+        this.radius = 12;
+        this.color = team === 'A' ? '#3b82f6' : '#ef4444';
+    }
+
+    addEffect(type, value, color) {
+        this.visualEffects.push({
+            type: type,
+            value: value,
+            color: color || '#fff',
+            life: 0.8,
+            x: 0, y: -20
+        });
+    }
+
+    update(dt, enemy, config) {
+        // --- Visual Update ---
+        this.visualEffects.forEach(e => { e.life -= dt; e.y -= 15 * dt; });
+        this.visualEffects = this.visualEffects.filter(e => e.life > 0);
+        this.animOffsetX *= 0.9;
+        this.animOffsetY *= 0.9;
+
+        if (this.state === STATES.DEAD) return;
+        if (this.hp <= 0) { this.die(); return; }
+
+        this.recoverStamina(dt, config);
+
+        // --- State Machine ---
+        if (this.stateTimer > 0) {
+            this.stateTimer -= dt;
+            if (this.stateTimer <= 0) {
+                // Timer finished, transition logic
+                if (this.state === STATES.INTERVAL || this.state === STATES.DEFENDING) {
+                    this.decideNextAction(enemy, config);
+                } else if (this.state === STATES.PRE_ATTACK) {
+                    this.executeAttack(enemy, config);
+                }
+            } else {
+                // During timer
+                if(this.state === STATES.DEFENDING) this.intent = INTENTS.DEFEND;
+            }
+            return; // Busy
+        }
+
+        // Logic when not busy (IDLE, MOVING, RECOVER)
+        switch (this.state) {
+            case STATES.RECOVER:
+                this.intent = INTENTS.REST;
+                if (this.stamina >= config.attackCost + 5) this.state = STATES.IDLE;
+                break;
+
+            case STATES.IDLE:
+            case STATES.MOVING:
+                const dist = this.distanceTo(enemy);
+                if (dist <= this.range) {
+                    // In Range
+                    if (this.stamina < config.attackCost) {
+                        this.state = STATES.RECOVER;
+                        sim.log(`${this.teamName()}: 지침 (휴식)`, 'log-info');
+                    } else {
+                        // Immediately try to attack if in IDLE/MOVING and in range
+                        // (The decision logic usually happens after Interval, but for first encounter or after move, we attack)
+                        this.startAttack(config);
+                    }
+                } else {
+                    // Chase
+                    this.state = STATES.MOVING;
+                    this.intent = INTENTS.ENGAGE;
+                    this.moveTowards(enemy, dt, config);
+                }
+                break;
+        }
+    }
+
+    decideNextAction(enemy, config) {
+        // Logic: Calculate Attack Probability based on Morale
+        const moraleRatio = this.morale / this.maxMorale;
+        let atkProb = 0;
+
+        // Linear interpolation formula
+        if (moraleRatio <= config.moraleThreshold) {
+            atkProb = config.atkProbMin;
+        } else {
+            atkProb = config.atkProbMin + (moraleRatio - config.moraleThreshold) * (config.atkProbMax - config.atkProbMin) / (1.0 - config.moraleThreshold);
+        }
+
+        // Target condition check
+        if (enemy.state === STATES.PRE_ATTACK) {
+            atkProb *= 0.5;
+        }
+
+        // Roll
+        if (Math.random() < atkProb) {
+            this.state = STATES.IDLE; 
+        } else {
+            this.state = STATES.DEFENDING;
+            this.stateTimer = 0.5;
+            this.intent = INTENTS.DEFEND;
+        }
+    }
+
+    moveTowards(target, dt, config) {
+        if (target.state === STATES.DEAD) return;
+        const dx = target.x - this.x;
+        const dy = target.y - this.y;
+        const dist = Math.hypot(dx, dy);
+        
+        if (dist <= this.range) {
+            this.state = STATES.IDLE;
+            return;
+        }
+
+        const speed = this.moveSpeed * config.moveMult;
+        const moveDist = speed * dt;
+        this.x += (dx / dist) * moveDist;
+        this.y += (dy / dist) * moveDist;
+    }
+
+    recoverStamina(dt, config) {
+        if (this.stamina < this.maxStamina) {
+            this.stamina = Math.min(this.maxStamina, this.stamina + (config.staminaRegen * dt));
+        }
+    }
+
+    startAttack(config) {
+        this.state = STATES.PRE_ATTACK;
+        this.stateTimer = config.preDelay;
+        this.intent = INTENTS.ATTACK;
+        this.addEffect('text', '!', '#fbbf24');
+    }
+
+    executeAttack(enemy, config) {
+        if (enemy.state === STATES.DEAD) { this.state = STATES.IDLE; return; }
+
+        // Animation
+        const dx = enemy.x - this.x;
+        const dy = enemy.y - this.y;
+        const dist = Math.hypot(dx, dy);
+        this.animOffsetX = (dx/dist) * 10;
+        this.animOffsetY = (dy/dist) * 10;
+
+        // Damage Calculation
+        const moraleRatio = this.morale / this.maxMorale;
+        const staminaRatio = this.stamina / this.maxStamina;
+
+        // Clamp to ensure positive
+        const moraleFactor = (1 - config.moraleInf) + (config.moraleInf * Math.max(0, moraleRatio));
+        const staminaFactor = (1 - config.staminaInf) + (config.staminaInf * Math.max(0, staminaRatio));
+        
+        let rawDamage = this.atk * moraleFactor * staminaFactor; 
+        
+        // Stamina Cost
+        this.stamina -= config.attackCost;
+
+        sim.log(`${this.teamName()}: 공격 (위력 ${rawDamage.toFixed(1)})`, 'log-attack');
+        
+        enemy.receiveAttack(rawDamage, this, config);
+
+        // Interval
+        const intervalTime = 1 / this.atkSpd;
+        this.state = STATES.INTERVAL;
+        this.stateTimer = intervalTime;
+        this.intent = INTENTS.NONE;
+    }
+
+    receiveAttack(damage, attacker, config) {
+        const canAct = (this.state === STATES.IDLE || this.state === STATES.DEFENDING || this.state === STATES.MOVING);
+        
+        if (!canAct) {
+             this.applyDamage(damage, false, config);
+             return;
+        }
+
+        const canBlock = this.shield > 0;
+        const lowStamina = this.stamina < config.evadeCost;
+        const isDefending = (this.state === STATES.DEFENDING);
+        
+        let choice = 'NONE';
+        
+        if (lowStamina) {
+            choice = canBlock ? 'BLOCK' : 'NONE';
+        } else {
+            let blockChance = canBlock ? (isDefending ? 0.9 : 0.7) : 0;
+            choice = Math.random() < blockChance ? 'BLOCK' : 'EVADE';
+        }
+
+        // 1. Evade
+        if (choice === 'EVADE') {
+            const shieldPen = 1 - (this.shield / 20 * config.shieldPen);
+            const armorPen = 1 - (this.armor / 20 * config.armorPen);
+            const stamRatio = this.stamina / this.maxStamina;
+            let evadeMult = config.evadeBonus;
+            
+            let chance = config.baseEvade * evadeMult * stamRatio * Math.max(0, shieldPen) * Math.max(0, armorPen);
+
+            if (Math.random() < chance) {
+                // SUCCESS
+                this.stamina -= config.evadeCost;
+                
+                const morRec = this.maxMorale * 0.33;
+                this.morale = Math.min(this.maxMorale, this.morale + morRec);
+                
+                this.addEffect('text', '회피!', '#4ade80');
+                this.addEffect('flash', '', '#4ade80');
+                sim.log(`${this.teamName()}: 회피 성공! (사기 +${morRec.toFixed(1)})`, 'log-evade');
+                
+                // Slide back
+                const dx = this.x - attacker.x;
+                const dy = this.y - attacker.y;
+                const dist = Math.hypot(dx, dy);
+                if(dist>0) { this.animOffsetX = (dx/dist)*15; this.animOffsetY = (dy/dist)*15; }
+
+                this.state = STATES.INTERVAL;
+                this.stateTimer = config.intervalEvade;
+                this.intent = INTENTS.NONE;
+                return;
+            } else {
+                sim.log(`${this.teamName()}: 회피 실패 (확률 ${(chance*100).toFixed(0)}%)`, 'log-info');
+            }
+        } 
+        
+        // 2. Block
+        if (choice === 'BLOCK' || (choice === 'EVADE' && canBlock)) {
+            let defBonus = (choice === 'BLOCK' || isDefending) ? config.defBonus : 1.0;
+            
+            const shieldDef = this.shield * 0.8 * defBonus;
+            const armorDef = this.armor * 0.5;
+            const totalDef = shieldDef + armorDef;
+            
+            const finalDmg = Math.max(0, damage - totalDef);
+            
+            this.hp -= finalDmg;
+            this.applyMoraleDamage(finalDmg);
+
+            this.addEffect('text', `방어 ${finalDmg.toFixed(0)}`, '#60a5fa');
+            sim.log(`${this.teamName()}: 방어 (감쇄 ${totalDef.toFixed(1)}) -> 피해 ${finalDmg.toFixed(1)}`, 'log-defend');
+            
+            this.state = STATES.INTERVAL;
+            this.stateTimer = config.intervalBlock;
+            this.intent = INTENTS.NONE;
+            return;
+        }
+
+        // 3. Full Damage
+        this.applyDamage(damage, true, config);
+    }
+
+    applyDamage(damage, passiveMitigation, config) {
+        let finalDmg = damage;
+        if (passiveMitigation) {
+            finalDmg = Math.max(0, damage - (this.armor * 0.5));
+        }
+        
+        this.hp -= finalDmg;
+        this.applyMoraleDamage(finalDmg);
+        
+        this.addEffect('text', `-${finalDmg.toFixed(1)}`, '#f87171');
+        this.addEffect('flash', '', '#f87171');
+        this.animOffsetX = (Math.random()-0.5) * 15;
+        this.animOffsetY = (Math.random()-0.5) * 15;
+
+        sim.log(`${this.teamName()}: 피격 ${finalDmg.toFixed(1)}`, 'log-attack');
+    }
+
+    applyMoraleDamage(dmg) {
+        const loss = (dmg / this.maxHp) * 30; 
+        this.morale = Math.max(0, this.morale - loss);
+    }
+
+    die() {
+        this.state = STATES.DEAD;
+        this.addEffect('text', '사망', '#000');
+        sim.log(`${this.teamName()}: 사망 (사기 0)`, 'log-attack font-bold');
+        sim.endGame(this.team === 'A' ? 'B' : 'A');
+    }
+
+    distanceTo(other) { return Math.hypot(other.x - this.x, other.y - this.y); }
+    teamName() { return this.team === 'A' ? '🔵' : '🔴'; }
+} // End Unit Class
+
+// --- Simulator Engine ---
+class BattleSimulator {
+    constructor() {
+        this.canvas = document.getElementById('battleCanvas');
+        this.ctx = this.canvas.getContext('2d');
+        this.logContainer = document.getElementById('logContainer');
+        
+        this.units = [];
+        this.running = false;
+        this.paused = false;
+        this.lastTime = 0;
+        this.timeScale = 1.0;
+        this.elapsedTime = 0;
+
+        this.initPresets();
+        this.resize();
+        window.addEventListener('resize', () => this.resize());
+        
+        window.addEventListener('keydown', (e) => {
+            if (e.code === 'Space') { e.preventDefault(); this.togglePause(); }
+        });
+    }
+
+    initPresets() {
+        const selA = document.getElementById('preset_A');
+        const selB = document.getElementById('preset_B');
+        
+        for (let name in UNIT_PRESETS) {
+            let optA = document.createElement('option');
+            optA.value = name; optA.innerText = name;
+            selA.appendChild(optA);
+            
+            let optB = document.createElement('option');
+            optB.value = name; optB.innerText = name;
+            selB.appendChild(optB);
+        }
+        this.loadPreset('A', '징집병');
+        this.loadPreset('B', '경보병');
+    }
+
+    loadPreset(team, presetName) {
+        if (!presetName) return;
+        const stats = UNIT_PRESETS[presetName];
+        const setVal = (id, val) => document.getElementById(id).value = val;
+        
+        setVal(`hp_${team}`, stats.hp);
+        setVal(`atk_${team}`, stats.atk);
+        setVal(`as_${team}`, stats.as);
+        setVal(`rng_${team}`, stats.rng);
+        setVal(`spd_${team}`, stats.spd);
+        setVal(`shd_${team}`, stats.shd);
+        setVal(`arm_${team}`, stats.arm);
+        setVal(`mst_${team}`, stats.mst);
+        setVal(`mor_${team}`, stats.mor);
+    }
+
+    resize() {
+        this.canvas.width = this.canvas.parentElement.clientWidth;
+        this.canvas.height = this.canvas.parentElement.clientHeight;
+        this.render();
+    }
+
+    log(msg, className = '') {
+        const time = `[${(this.elapsedTime).toFixed(1)}s] `;
+        const div = document.createElement('div');
+        div.className = `log-entry ${className}`;
+        div.innerHTML = `<span class="text-gray-400 text-[10px]">${time}</span> ${msg}`;
+        this.logContainer.appendChild(div);
+        this.logContainer.scrollTop = this.logContainer.scrollHeight;
+    }
+
+    getStats(team) {
+        return {
+            hp: Number(document.getElementById(`hp_${team}`).value),
+            atk: Number(document.getElementById(`atk_${team}`).value),
+            as: Number(document.getElementById(`as_${team}`).value),
+            rng: Number(document.getElementById(`rng_${team}`).value),
+            spd: Number(document.getElementById(`spd_${team}`).value),
+            shd: Number(document.getElementById(`shd_${team}`).value),
+            arm: Number(document.getElementById(`arm_${team}`).value),
+            mst: Number(document.getElementById(`mst_${team}`).value),
+            mor: Number(document.getElementById(`mor_${team}`).value),
+        };
+    }
+
+    applyStats() {
+        this.reset();
+        const cx = this.canvas.width / 2;
+        const cy = this.canvas.height / 2;
+        
+        const statsA = this.getStats('A');
+        const statsB = this.getStats('B');
+        
+        // Spawn distance: Range of A + Range of B + Buffer
+        const spawnDist = (statsA.rng * RANGE_SCALE) + (statsB.rng * RANGE_SCALE) + 100;
+        
+        this.units = [
+            new Unit(1, 'A', cx - spawnDist/2, cy, statsA),
+            new Unit(2, 'B', cx + spawnDist/2, cy, statsB)
+        ];
+        
+        this.log("전투 시작", "font-bold text-center mt-2 mb-2 bg-gray-100");
+        this.start();
+    }
+
+    start() {
+        if (this.running) return;
+        this.running = true;
+        this.paused = false;
+        this.lastTime = performance.now();
+        document.getElementById('winnerOverlay').classList.add('hidden');
+        requestAnimationFrame((t) => this.loop(t));
+    }
+
+    reset() {
+        this.running = false;
+        this.elapsedTime = 0;
+        this.units = [];
+        this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
+        this.logContainer.innerHTML = '';
+        document.getElementById('btnPause').innerText = "일시정지";
+        document.getElementById('winnerOverlay').classList.add('hidden');
+    }
+
+    togglePause() {
+        this.paused = !this.paused;
+        const btn = document.getElementById('btnPause');
+        btn.innerText = this.paused ? "재개" : "일시정지";
+        btn.classList.toggle('bg-yellow-500');
+        btn.classList.toggle('bg-green-600');
+        if (!this.paused) {
+            this.lastTime = performance.now();
+            requestAnimationFrame((t) => this.loop(t));
+        }
+    }
+
+    setSpeed(val) { this.timeScale = parseFloat(val); }
+
+    endGame(winnerTeam) {
+        this.running = false;
+        const overlay = document.getElementById('winnerOverlay');
+        const text = document.getElementById('winnerText');
+        overlay.classList.remove('hidden');
+        
+        if (winnerTeam === 'A') {
+            text.innerText = "Blue Team 승리!";
+            text.className = "text-4xl font-extrabold mb-4 animate-bounce text-blue-400";
+        } else {
+            text.innerText = "Red Team 승리!";
+            text.className = "text-4xl font-extrabold mb-4 animate-bounce text-red-400";
+        }
+    }
+
+    loop(timestamp) {
+        if (!this.running || this.paused) return;
+        const dtRaw = (timestamp - this.lastTime) / 1000;
+        this.lastTime = timestamp;
+        const dt = Math.min(dtRaw, 0.1) * this.timeScale;
+        this.elapsedTime += dt;
+
+        const config = GlobalConfig.get();
+        const unitA = this.units[0];
+        const unitB = this.units[1];
+
+        if (unitA && unitB) {
+            unitA.update(dt, unitB, config);
+            unitB.update(dt, unitA, config);
+        }
+
+        this.render();
+        requestAnimationFrame((t) => this.loop(t));
+    }
+
+    render() {
+        const ctx = this.ctx;
+        ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
+        
+        // Grid
+        ctx.strokeStyle = '#334155'; ctx.lineWidth = 0.5; ctx.beginPath();
+        for(let i=0; i<this.canvas.width; i+=40) { ctx.moveTo(i,0); ctx.lineTo(i,this.canvas.height); }
+        for(let i=0; i<this.canvas.height; i+=40) { ctx.moveTo(0,i); ctx.lineTo(this.canvas.width,i); }
+        ctx.stroke();
+
+        this.units.forEach(u => {
+            if(u.state === STATES.DEAD) return;
+            const drawX = u.x + u.animOffsetX;
+            const drawY = u.y + u.animOffsetY;
+
+            // Range
+            ctx.beginPath();
+            ctx.arc(u.x, u.y, u.range, 0, Math.PI * 2);
+            ctx.strokeStyle = u.color + '22';
+            ctx.setLineDash([4, 4]); ctx.stroke(); ctx.setLineDash([]);
+
+            // Body
+            ctx.shadowBlur = 8; ctx.shadowColor = u.color;
+            ctx.beginPath();
+            ctx.arc(drawX, drawY, u.radius, 0, Math.PI * 2);
+            ctx.fillStyle = u.color; ctx.fill();
+            ctx.shadowBlur = 0;
+
+            // Shield
+            if (u.shield > 0) {
+                ctx.beginPath();
+                ctx.arc(drawX, drawY, u.radius + 5, -Math.PI/2, Math.PI/2);
+                ctx.strokeStyle = '#fbbf24'; ctx.lineWidth = 3; ctx.stroke();
+            }
+
+            // Stats
+            const barW = 32; const barH = 4; const barX = drawX - barW/2;
+            
+            // HP
+            ctx.fillStyle = '#475569'; ctx.fillRect(barX, drawY + 20, barW, barH);
+            ctx.fillStyle = '#ef4444'; ctx.fillRect(barX, drawY + 20, barW * (u.hp / u.maxHp), barH);
+            
+            // Stamina
+            ctx.fillStyle = '#475569'; ctx.fillRect(barX, drawY + 25, barW, barH);
+            ctx.fillStyle = '#eab308'; ctx.fillRect(barX, drawY + 25, barW * (u.stamina / u.maxStamina), barH);
+
+            // Morale (New)
+            ctx.fillStyle = '#475569'; ctx.fillRect(barX, drawY + 30, barW, barH);
+            ctx.fillStyle = '#8b5cf6'; ctx.fillRect(barX, drawY + 30, barW * (u.morale / u.maxMorale), barH);
+
+            // Intent Bubble
+            ctx.fillStyle = 'rgba(255,255,255,0.85)';
+            ctx.beginPath(); ctx.roundRect(drawX - 30, drawY - 40, 60, 18, 4); ctx.fill();
+            ctx.fillStyle = '#1e293b'; ctx.font = 'bold 9px sans-serif';
+            ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+            ctx.fillText(u.intent, drawX, drawY - 31);
+
+            // Effects
+            u.visualEffects.forEach(e => {
+                ctx.save(); ctx.globalAlpha = e.life;
+                if (e.type === 'text') {
+                    ctx.font = 'bold 12px sans-serif'; ctx.fillStyle = e.color;
+                    ctx.strokeStyle = '#000'; ctx.lineWidth = 2;
+                    ctx.strokeText(e.value, drawX + e.x, drawY + e.y);
+                    ctx.fillText(e.value, drawX + e.x, drawY + e.y);
+                } else if (e.type === 'flash') {
+                    ctx.beginPath(); ctx.arc(drawX, drawY, u.radius, 0, Math.PI*2);
+                    ctx.fillStyle = e.color; ctx.fill();
+                }
+                ctx.restore();
+            });
+        });
+    }
+}
+
+// Global instance
+const sim = new BattleSimulator();
+</script>
+</body>
+</html>
