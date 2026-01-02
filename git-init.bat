@@ -32,3 +32,4 @@ echo 초기화 완료! 이제 git-update.ps1 또는 git-update-major.ps1를 실�
 pause
 
 
+

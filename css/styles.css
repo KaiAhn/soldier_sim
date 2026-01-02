@@ -1,0 +1,68 @@
+body { 
+    font-family: 'Noto Sans KR', sans-serif; 
+    overflow: hidden; 
+    background-color: #1e293b; 
+}
+
+.log-entry { 
+    padding: 2px 0; 
+    border-bottom: 1px solid #334155; 
+    font-size: 13px; 
+    color: #cbd5e1; 
+}
+
+.log-attack { color: #f87171; }
+.log-defend { color: #60a5fa; }
+.log-evade { color: #4ade80; }
+.log-info { color: #94a3b8; }
+.log-sys { color: #a78bfa; font-style: italic; }
+
+::-webkit-scrollbar { width: 6px; }
+::-webkit-scrollbar-track { background: #1e293b; }
+::-webkit-scrollbar-thumb { background: #475569; border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: #64748b; }
+
+input[type=number] { 
+    padding: 1px 4px; 
+    font-size: 0.85em; 
+    height: 1.5rem; 
+}
+
+label { 
+    font-size: 0.875rem; 
+    color: #94a3b8; 
+}
+
+select { 
+    color: #1e293b; 
+}
+
+.config-tab-btn {
+    padding: 6px 12px;
+    background-color: #475569;
+    color: #cbd5e1;
+    border: none;
+    border-radius: 4px 4px 0 0;
+    cursor: pointer;
+    font-size: 0.75rem;
+    font-weight: 600;
+    transition: all 0.2s;
+}
+
+.config-tab-btn:hover {
+    background-color: #64748b;
+}
+
+.config-tab-btn.active {
+    background-color: #334155;
+    color: #f1f5f9;
+}
+
+.config-tab-content {
+    display: none;
+}
+
+.config-tab-content.active {
+    display: block;
+}
+
