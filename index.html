@@ -8,7 +8,7 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <style>
         body { font-family: 'Noto Sans KR', sans-serif; overflow: hidden; background-color: #1e293b; }
-        .log-entry { padding: 2px 0; border-bottom: 1px solid #334155; font-size: 11px; color: #cbd5e1; }
+        .log-entry { padding: 2px 0; border-bottom: 1px solid #334155; font-size: 13px; color: #cbd5e1; }
         .log-attack { color: #f87171; }
         .log-defend { color: #60a5fa; }
         .log-evade { color: #4ade80; }
@@ -21,7 +21,7 @@
         ::-webkit-scrollbar-thumb:hover { background: #64748b; }
 
         input[type=number] { padding: 1px 4px; font-size: 0.85em; height: 1.5rem; }
-        label { font-size: 0.75rem; color: #94a3b8; }
+        label { font-size: 0.875rem; color: #94a3b8; }
         select { color: #1e293b; }
     </style>
 </head>
@@ -39,7 +39,8 @@
                 <option value="0.5">x0.5 (느림)</option>
                 <option value="1.0" selected>x1.0 (정상)</option>
                 <option value="2.0">x2.0 (빠름)</option>
-                <option value="10.0">x10.0 (초고속)</option>
+                <option value="5.0">x5.0 (초고속)</option>
+                <option value="10.0">x10.0 (최고속)</option>
             </select>
         </div>
     </header>
@@ -48,7 +49,7 @@
     <div class="flex flex-1 overflow-hidden">
         
         <!-- Left: Settings Panel -->
-        <div class="w-[450px] bg-slate-800 border-r border-slate-700 overflow-y-auto flex flex-col shadow-lg z-10">
+        <div class="w-[480px] bg-slate-800 border-r border-slate-700 overflow-y-auto flex flex-col shadow-lg z-10">
             <div class="p-3 space-y-4">
                 
                 <!-- Unit Settings -->
@@ -62,6 +63,7 @@
                             </select>
                         </div>
                         <div class="space-y-1">
+                            <div class="flex justify-between"><label>인원수</label><input type="number" id="count_A" value="10" min="1" max="10" class="w-16 border rounded text-right text-black"></div>
                             <div class="flex justify-between"><label>체력</label><input type="number" id="hp_A" class="w-16 border rounded text-right text-black"></div>
                             <div class="flex justify-between"><label>공격력</label><input type="number" id="atk_A" class="w-16 border rounded text-right text-black"></div>
                             <div class="flex justify-between"><label>공속</label><input type="number" id="as_A" step="0.1" class="w-16 border rounded text-right text-black"></div>
@@ -71,6 +73,7 @@
                             <div class="flex justify-between"><label>사기</label><input type="number" id="mor_A" class="w-16 border rounded text-right text-black"></div>
                             <div class="flex justify-between"><label>스테미너</label><input type="number" id="mst_A" class="w-16 border rounded text-right text-black"></div>
                             <div class="flex justify-between"><label>이동속도</label><input type="number" id="spd_A" class="w-16 border rounded text-right text-black"></div>
+                            <div class="flex justify-between"><label>질량</label><input type="number" id="mass_A" class="w-16 border rounded text-right text-black"></div>
                         </div>
                     </div>
 
@@ -83,6 +86,7 @@
                             </select>
                         </div>
                         <div class="space-y-1">
+                            <div class="flex justify-between"><label>인원수</label><input type="number" id="count_B" value="1" min="1" max="10" class="w-16 border rounded text-right text-black"></div>
                             <div class="flex justify-between"><label>체력</label><input type="number" id="hp_B" class="w-16 border rounded text-right text-black"></div>
                             <div class="flex justify-between"><label>공격력</label><input type="number" id="atk_B" class="w-16 border rounded text-right text-black"></div>
                             <div class="flex justify-between"><label>공속</label><input type="number" id="as_B" step="0.1" class="w-16 border rounded text-right text-black"></div>
@@ -92,42 +96,75 @@
                             <div class="flex justify-between"><label>사기</label><input type="number" id="mor_B" class="w-16 border rounded text-right text-black"></div>
                             <div class="flex justify-between"><label>스테미너</label><input type="number" id="mst_B" class="w-16 border rounded text-right text-black"></div>
                             <div class="flex justify-between"><label>이동속도</label><input type="number" id="spd_B" class="w-16 border rounded text-right text-black"></div>
+                            <div class="flex justify-between"><label>질량</label><input type="number" id="mass_B" class="w-16 border rounded text-right text-black"></div>
                         </div>
                     </div>
                 </div>
 
-                <button id="btnApply" class="w-full bg-indigo-600 text-white py-1.5 rounded shadow hover:bg-indigo-500 font-bold text-xs transition">
-                    <i class="fa-solid fa-play"></i> 적용 및 시작
-                </button>
+                <div class="grid grid-cols-2 gap-2">
+                    <button id="btnApply" class="bg-indigo-600 text-white py-1.5 rounded shadow hover:bg-indigo-500 font-bold text-xs transition">
+                        <i class="fa-solid fa-play"></i> 적용 및 시작
+                    </button>
+                    <button id="btnSaveSettings" class="bg-green-600 text-white py-1.5 rounded shadow hover:bg-green-500 font-bold text-xs transition">
+                        <i class="fa-solid fa-download"></i> 설정 저장
+                    </button>
+                </div>
 
                 <!-- Global Config -->
                 <div class="bg-slate-700/50 p-2 rounded border border-slate-600 space-y-3">
                     <h3 class="font-bold text-slate-300 text-xs border-b border-slate-600 pb-1">⚙️ 행동 결정 (AI)</h3>
                     <div class="grid grid-cols-2 gap-x-4 gap-y-1">
-                        <div class="flex justify-between items-center"><label>최대 공격확률</label><input type="number" id="cfg_atk_prob_max" value="1.0" step="0.1" class="w-16 border text-right text-black"></div>
-                        <div class="flex justify-between items-center"><label>최소 공격확률</label><input type="number" id="cfg_atk_prob_min" value="0.3" step="0.1" class="w-16 border text-right text-black"></div>
-                        <div class="flex justify-between items-center col-span-2"><label>사기 임계값 (이하일때 최소확률)</label><input type="number" id="cfg_morale_threshold" value="0.2" step="0.1" class="w-16 border text-right text-black"></div>
+                        <div class="flex justify-between items-center" title="AI가 공격을 선택할 최대 확률 (0~1)"><label>최대 공격확률</label><input type="number" id="cfg_atk_prob_max" value="1.0" step="0.1" class="w-16 border text-right text-black"></div>
+                        <div class="flex justify-between items-center" title="AI가 공격을 선택할 최소 확률 (0~1)"><label>최소 공격확률</label><input type="number" id="cfg_atk_prob_min" value="0.3" step="0.1" class="w-16 border text-right text-black"></div>
+                        <div class="flex justify-between items-center col-span-2" title="사기가 이 값 이하일 때 최소 공격확률 적용"><label>사기 임계값 (이하일때 최소확률)</label><input type="number" id="cfg_morale_threshold" value="0.2" step="0.1" class="w-16 border text-right text-black"></div>
                     </div>
 
-                    <h3 class="font-bold text-slate-300 text-xs border-b border-slate-600 pb-1">⚙️ 전투 밸런스</h3>
+                    <h3 class="font-bold text-slate-300 text-xs border-b border-slate-600 pb-1">⚙️ 공격력</h3>
                     <div class="grid grid-cols-2 gap-x-4 gap-y-1">
                         <div class="flex justify-between items-center" title="0에 가까울수록 영향없음"><label class="text-indigo-300 font-bold">사기 영향력(0~1)</label><input type="number" id="cfg_morale_inf" value="0.4" step="0.1" class="w-16 border text-right text-black bg-indigo-50"></div>
                         <div class="flex justify-between items-center" title="0에 가까울수록 영향없음"><label class="text-indigo-300 font-bold">스테미너 영향력</label><input type="number" id="cfg_stamina_inf" value="0.3" step="0.1" class="w-16 border text-right text-black bg-indigo-50"></div>
-                        <div class="flex justify-between items-center"><label>기본 회피율</label><input type="number" id="cfg_base_evade" value="0.1" step="0.05" class="w-16 border text-right text-black"></div>
-                        <div class="flex justify-between items-center"><label>회피 선택 보정(x)</label><input type="number" id="cfg_evade_bonus" value="2.0" step="0.1" class="w-16 border text-right text-black"></div>
-                        <div class="flex justify-between items-center"><label>방어 선택 보정(x)</label><input type="number" id="cfg_def_bonus" value="1.5" step="0.1" class="w-16 border text-right text-black"></div>
-                        <div class="flex justify-between items-center"><label>방패 회피 페널티</label><input type="number" id="cfg_shield_pen" value="0.5" step="0.1" class="w-16 border text-right text-black"></div>
-                        <div class="flex justify-between items-center"><label>갑옷 회피 페널티</label><input type="number" id="cfg_armor_pen" value="0.5" step="0.1" class="w-16 border text-right text-black"></div>
+                    </div>
+
+                    <h3 class="font-bold text-slate-300 text-xs border-b border-slate-600 pb-1">⚙️ 회피</h3>
+                    <div class="grid grid-cols-2 gap-x-4 gap-y-1">
+                        <div class="flex justify-between items-center" title="기본 회피 성공 확률 (0~1)"><label>기본 회피율</label><input type="number" id="cfg_base_evade" value="0.1" step="0.05" class="w-16 border text-right text-black"></div>
+                        <div class="flex justify-between items-center" title="회피를 선택했을 때 기본 회피율에 곱해지는 배율"><label>회피 선택 보정(x)</label><input type="number" id="cfg_evade_bonus" value="2.0" step="0.1" class="w-16 border text-right text-black"></div>
+                        <div class="flex justify-between items-center" title="방패 보유시 회피율에 적용되는 페널티 배율"><label>방패 회피 페널티</label><input type="number" id="cfg_shield_pen" value="0.5" step="0.1" class="w-16 border text-right text-black"></div>
+                        <div class="flex justify-between items-center" title="갑옷 보유시 회피율에 적용되는 페널티 배율"><label>갑옷 회피 페널티</label><input type="number" id="cfg_armor_pen" value="0.5" step="0.1" class="w-16 border text-right text-black"></div>
+                    </div>
+
+                    <h3 class="font-bold text-slate-300 text-xs border-b border-slate-600 pb-1">⚙️ 방어 & 데미지 감경</h3>
+                    <div class="grid grid-cols-2 gap-x-4 gap-y-1">
+                        <div class="flex justify-between items-center" title="방어를 선택했을 때 방어력에 곱해지는 보정 배율"><label>방어 선택 보정(x)</label><input type="number" id="cfg_def_bonus" value="1.5" step="0.1" class="w-16 border text-right text-black"></div>
+                        <div class="flex justify-between items-center" title="방패 기본 배율 (방패 값에 곱해지는 배율)"><label>방패 기본 배율</label><input type="number" id="cfg_shield_base_mult" value="1.5" step="0.1" class="w-16 border text-right text-black"></div>
+                        <div class="flex justify-between items-center" title="갑옷 기본 배율 (갑옷 값에 곱해지는 배율)"><label>갑옷 기본 배율</label><input type="number" id="cfg_armor_base_mult" value="1.0" step="0.1" class="w-16 border text-right text-black"></div>
+                        <div class="flex justify-between items-center" title="방어태세 보너스 (방어태세일 때 추가 방어력 배율)"><label>방어태세 보너스(x)</label><input type="number" id="cfg_defending_bonus" value="1.3" step="0.1" class="w-16 border text-right text-black"></div>
+                        <div class="flex justify-between items-center" title="방어 지속 시간 (방어태세가 유지되는 시간, 초)"><label>방어 지속 시간(초)</label><input type="number" id="cfg_defending_duration" value="2.0" step="0.1" class="w-16 border text-right text-black"></div>
+                        <div class="flex justify-between items-center" title="전체 데미지 감소 보정 (모든 데미지에 적용되는 배율)"><label>전체 데미지 감소(x)</label><input type="number" id="cfg_damage_reduction" value="0.5" step="0.1" class="w-16 border text-right text-black"></div>
                     </div>
 
                     <h3 class="font-bold text-slate-300 text-xs border-b border-slate-600 pb-1">⚙️ 인터벌 & 비용</h3>
                     <div class="grid grid-cols-2 gap-x-4 gap-y-1">
-                        <div class="flex justify-between items-center"><label>공격 전 딜레이</label><input type="number" id="cfg_pre_delay" value="0.5" step="0.1" class="w-16 border text-right text-black"></div>
-                        <div class="flex justify-between items-center"><label>회피 후 인터벌</label><input type="number" id="cfg_interval_evade" value="0.5" step="0.1" class="w-16 border text-right text-black"></div>
-                        <div class="flex justify-between items-center"><label>방어 후 인터벌</label><input type="number" id="cfg_interval_block" value="0.8" step="0.1" class="w-16 border text-right text-black"></div>
-                        <div class="flex justify-between items-center"><label>공격 스테미너</label><input type="number" id="cfg_attack_cost" value="10" class="w-16 border text-right text-black"></div>
-                        <div class="flex justify-between items-center"><label>회피 스테미너</label><input type="number" id="cfg_evade_cost" value="5" class="w-16 border text-right text-black"></div>
-                        <div class="flex justify-between items-center"><label>스테미너 회복/s</label><input type="number" id="cfg_stamina_regen" value="5" class="w-16 border text-right text-black"></div>
+                        <div class="flex justify-between items-center" title="공격 전 대기 시간 (초)"><label>공격 전 딜레이</label><input type="number" id="cfg_pre_delay" value="0.5" step="0.1" class="w-16 border text-right text-black"></div>
+                        <div class="flex justify-between items-center" title="회피 후 다음 행동까지 대기 시간 (초)"><label>회피 후 인터벌</label><input type="number" id="cfg_interval_evade" value="0.5" step="0.1" class="w-16 border text-right text-black"></div>
+                        <div class="flex justify-between items-center" title="방어 후 다음 행동까지 대기 시간 (초)"><label>방어 후 인터벌</label><input type="number" id="cfg_interval_block" value="0.8" step="0.1" class="w-16 border text-right text-black"></div>
+                        <div class="flex justify-between items-center" title="공격시 소모되는 스테미너"><label>공격 스테미너</label><input type="number" id="cfg_attack_cost" value="10" class="w-16 border text-right text-black"></div>
+                        <div class="flex justify-between items-center" title="회피시 소모되는 스테미너"><label>회피 스테미너</label><input type="number" id="cfg_evade_cost" value="5" class="w-16 border text-right text-black"></div>
+                        <div class="flex justify-between items-center" title="초당 스테미너 회복량"><label>스테미너 회복/s</label><input type="number" id="cfg_stamina_regen" value="1" class="w-16 border text-right text-black"></div>
+                        <div class="flex justify-between items-center" title="인터벌 상태일 때 스테미너 회복 보너스 배율"><label>인터벌 회복 보너스(x)</label><input type="number" id="cfg_interval_stamina_bonus" value="2.0" step="0.1" class="w-16 border text-right text-black"></div>
+                    </div>
+
+                    <h3 class="font-bold text-slate-300 text-xs border-b border-slate-600 pb-1">⚙️ 몸싸움 & 물리</h3>
+                    <div class="grid grid-cols-2 gap-x-4 gap-y-1">
+                        <div class="flex justify-between items-center" title="적군의 차단 영역 비율"><label>적군 차단 면적(%)</label><input type="number" id="cfg_enemy_block_area" value="90" step="1" class="w-16 border text-right text-black"></div>
+                        <div class="flex justify-between items-center" title="적군 몸싸움 구역 최대 감속률"><label>적군 최대 감속(%)</label><input type="number" id="cfg_enemy_max_slow" value="70" step="1" class="w-16 border text-right text-black"></div>
+                        <div class="flex justify-between items-center" title="아군의 통과 가능 면적 비율"><label>아군 통과 면적(%)</label><input type="number" id="cfg_ally_pass_area" value="60" step="1" class="w-16 border text-right text-black"></div>
+                        <div class="flex justify-between items-center" title="아군 몸싸움 구역 최대 감속률"><label>아군 최대 감속(%)</label><input type="number" id="cfg_ally_max_slow" value="20" step="1" class="w-16 border text-right text-black"></div>
+                        <div class="flex justify-between items-center" title="피격시 밀쳐짐 최대 거리"><label>밀쳐짐 최대 거리</label><input type="number" id="cfg_knockback_max_dist" value="1.0" step="0.1" class="w-16 border text-right text-black"></div>
+                        <div class="flex justify-between items-center" title="사망시 밀쳐짐 배율"><label>사망 밀쳐짐 배율</label><input type="number" id="cfg_death_knockback_mult" value="1.5" step="0.1" class="w-16 border text-right text-black"></div>
+                        <div class="flex justify-between items-center" title="밀쳐짐 힘 배율 (높을수록 더 강하게 밀려남)"><label>밀쳐짐 힘 배율</label><input type="number" id="cfg_knockback_force_mult" value="600" step="50" class="w-16 border text-right text-black"></div>
+                        <div class="flex justify-between items-center" title="밀쳐짐 감쇠율 (0~1, 높을수록 더 오래 지속)"><label>밀쳐짐 감쇠율</label><input type="number" id="cfg_knockback_decay" value="0.90" step="0.01" class="w-16 border text-right text-black"></div>
+                        <div class="flex justify-between items-center" title="밀쳐짐 중 충돌 무시 임계값 (이 값 이상이면 충돌 처리 안함)"><label>충돌 무시 임계값</label><input type="number" id="cfg_knockback_collision_threshold" value="1.0" step="0.1" class="w-16 border text-right text-black"></div>
                     </div>
                 </div>
             </div>
@@ -138,9 +175,11 @@
             <canvas id="battleCanvas" class="shadow-2xl rounded-lg bg-slate-950"></canvas>
             
             <!-- Result Overlay -->
-            <div id="winnerOverlay" class="absolute inset-0 bg-black/60 backdrop-blur-sm flex flex-col justify-center items-center hidden text-white z-50">
-                <h2 id="winnerText" class="text-4xl font-extrabold mb-4 animate-bounce">승리!</h2>
-                <button id="btnRestart" class="px-6 py-2 bg-white text-black font-bold rounded-full hover:bg-gray-200 transition">다시 하기</button>
+            <div id="winnerOverlay" class="absolute inset-0 bg-black/10 flex flex-col justify-end items-center hidden text-white z-50 pb-4">
+                <div class="bg-slate-800/95 backdrop-blur-sm rounded-lg p-6 shadow-2xl border border-slate-600 min-w-[500px]">
+                    <div id="resultStats" class="mb-4 space-y-3"></div>
+                    <button id="btnRestart" class="w-full px-6 py-2 bg-white text-black font-bold rounded-full hover:bg-gray-200 transition">다시 하기</button>
+                </div>
             </div>
         </div>
 
@@ -157,16 +196,11 @@
     </div>
 
 <script>
-/**
- * Battle Simulator Logic v1.7 (Merged with Tactical View)
- */
-
-// --- Constants & Config ---
-const RANGE_SCALE = 40; 
+const RANGE_SCALE = 60;
 const UNIT_PRESETS = {
-    "징집병": { hp: 20, atk: 10, as: 1.0, rng: 1.0, spd: 40, shd: 0, arm: 1, mst: 60, mor: 40 },
-    "경보병": { hp: 30, atk: 15, as: 0.9, rng: 1.0, spd: 45, shd: 3, arm: 2, mst: 65, mor: 60 },
-    "중보병": { hp: 35, atk: 15, as: 0.7, rng: 1.2, spd: 35, shd: 5, arm: 5, mst: 75, mor: 80 }
+    "징집병": { hp: 20, atk: 10, as: 1.0, rng: 1.0, spd: 40, shd: 0, arm: 1, mst: 60, mor: 40, mass: 11 }, // 인간 10 + 장비 1
+    "경보병": { hp: 30, atk: 15, as: 0.9, rng: 1.0, spd: 45, shd: 3, arm: 2, mst: 65, mor: 60, mass: 15 }, // 인간 10 + 장비 5
+    "중보병": { hp: 35, atk: 15, as: 0.7, rng: 1.2, spd: 35, shd: 5, arm: 5, mst: 75, mor: 80, mass: 21 }  // 인간 10 + 장비 11
 };
 
 const STATES = {
@@ -187,37 +221,300 @@ const INTENTS = {
     REST: '숨고르기'
 };
 
-// --- Global Config Manager ---
 const GlobalConfig = {
     get: () => ({
-        // AI Logic
         atkProbMax: Number(document.getElementById('cfg_atk_prob_max').value),
         atkProbMin: Number(document.getElementById('cfg_atk_prob_min').value),
         moraleThreshold: Number(document.getElementById('cfg_morale_threshold').value),
-        
-        // Damage Influences
         moraleInf: Number(document.getElementById('cfg_morale_inf').value),
         staminaInf: Number(document.getElementById('cfg_stamina_inf').value),
-
-        // Balance
         baseEvade: Number(document.getElementById('cfg_base_evade').value),
         evadeBonus: Number(document.getElementById('cfg_evade_bonus').value),
-        defBonus: Number(document.getElementById('cfg_def_bonus').value),
         shieldPen: Number(document.getElementById('cfg_shield_pen').value),
         armorPen: Number(document.getElementById('cfg_armor_pen').value),
-        
-        // Intervals & Costs
+        defBonus: Number(document.getElementById('cfg_def_bonus').value),
+        shieldBaseMult: Number(document.getElementById('cfg_shield_base_mult').value),
+        armorBaseMult: Number(document.getElementById('cfg_armor_base_mult').value),
+        defendingBonus: Number(document.getElementById('cfg_defending_bonus').value),
+        defendingDuration: Number(document.getElementById('cfg_defending_duration').value),
+        damageReduction: Number(document.getElementById('cfg_damage_reduction').value),
         preDelay: Number(document.getElementById('cfg_pre_delay').value),
         intervalEvade: Number(document.getElementById('cfg_interval_evade').value),
         intervalBlock: Number(document.getElementById('cfg_interval_block').value),
         attackCost: Number(document.getElementById('cfg_attack_cost').value),
         evadeCost: Number(document.getElementById('cfg_evade_cost').value),
         staminaRegen: Number(document.getElementById('cfg_stamina_regen').value),
-        moveMult: 1.5
+        intervalStaminaBonus: Number(document.getElementById('cfg_interval_stamina_bonus').value),
+        moveMult: 1.5,
+        enemyBlockArea: Number(document.getElementById('cfg_enemy_block_area').value) / 100,
+        enemyMaxSlow: Number(document.getElementById('cfg_enemy_max_slow').value) / 100,
+        allyPassArea: Number(document.getElementById('cfg_ally_pass_area').value) / 100,
+        allyMaxSlow: Number(document.getElementById('cfg_ally_max_slow').value) / 100,
+        knockbackMaxDist: Number(document.getElementById('cfg_knockback_max_dist').value),
+        deathKnockbackMult: Number(document.getElementById('cfg_death_knockback_mult').value),
+        knockbackForceMult: Number(document.getElementById('cfg_knockback_force_mult').value),
+        knockbackDecay: Number(document.getElementById('cfg_knockback_decay').value),
+        knockbackCollisionThreshold: Number(document.getElementById('cfg_knockback_collision_threshold').value)
     })
 };
 
-// --- Unit Class (Merged) ---
+class SettingsManager {
+    constructor() {
+        this.STORAGE_KEY = 'war_sim_settings';
+        this.settings = null;
+    }
+
+    async loadFromFile() {
+        try {
+            // 캐시 무시를 위해 타임스탬프 추가
+            const response = await fetch('settings.json?' + Date.now(), {
+                cache: 'no-cache'
+            });
+            if (!response.ok) throw new Error('Failed to load settings.json');
+            this.settings = await response.json();
+            console.log('Loaded settings from file:', this.settings);
+            this.saveToLocalStorage();
+            return this.settings;
+        } catch (error) {
+            console.warn('Failed to load settings.json, trying LocalStorage:', error);
+            const localSettings = this.loadFromLocalStorage();
+            if (localSettings) {
+                console.log('Loaded settings from LocalStorage:', localSettings);
+                return localSettings;
+            }
+            return null;
+        }
+    }
+
+    loadFromLocalStorage() {
+        try {
+            const stored = localStorage.getItem(this.STORAGE_KEY);
+            if (stored) {
+                this.settings = JSON.parse(stored);
+                return this.settings;
+            }
+        } catch (error) {
+            console.warn('Failed to load from LocalStorage:', error);
+        }
+        return null;
+    }
+
+    saveToLocalStorage() {
+        if (!this.settings) return;
+        try {
+            localStorage.setItem(this.STORAGE_KEY, JSON.stringify(this.settings));
+        } catch (error) {
+            console.warn('Failed to save to LocalStorage:', error);
+        }
+    }
+
+    getSettings() {
+        return this.settings;
+    }
+
+    updateSettings(newSettings) {
+        this.settings = { ...this.settings, ...newSettings };
+        this.saveToLocalStorage();
+    }
+
+    applySettings() {
+        if (!this.settings) return;
+
+        const setVal = (id, val) => {
+            const elem = document.getElementById(id);
+            if (elem) elem.value = val;
+        };
+
+        // Update UNIT_PRESETS
+        if (this.settings.unitPresets) {
+            Object.assign(UNIT_PRESETS, this.settings.unitPresets);
+        }
+
+        // Apply Team A settings
+        if (this.settings.teamA) {
+            const teamA = this.settings.teamA;
+            console.log('Applying teamA settings:', teamA);
+            setVal('count_A', teamA.count || 10);
+            if (teamA.selectedPreset) {
+                setVal('preset_A', teamA.selectedPreset);
+            }
+            setVal('hp_A', teamA.hp);
+            setVal('atk_A', teamA.atk);
+            setVal('as_A', teamA.as);
+            setVal('rng_A', teamA.rng);
+            setVal('spd_A', teamA.spd);
+            setVal('shd_A', teamA.shd);
+            setVal('arm_A', teamA.arm);
+            setVal('mst_A', teamA.mst);
+            setVal('mor_A', teamA.mor);
+            setVal('mass_A', teamA.mass || 1);
+        }
+
+        // Apply Team B settings
+        if (this.settings.teamB) {
+            const teamB = this.settings.teamB;
+            console.log('Applying teamB settings:', teamB);
+            setVal('count_B', teamB.count || 1);
+            if (teamB.selectedPreset) {
+                setVal('preset_B', teamB.selectedPreset);
+            }
+            setVal('hp_B', teamB.hp);
+            setVal('atk_B', teamB.atk);
+            setVal('as_B', teamB.as);
+            setVal('rng_B', teamB.rng);
+            setVal('spd_B', teamB.spd);
+            setVal('shd_B', teamB.shd);
+            setVal('arm_B', teamB.arm);
+            setVal('mst_B', teamB.mst);
+            setVal('mor_B', teamB.mor);
+            setVal('mass_B', teamB.mass || 1);
+        }
+
+        // Apply Global Config
+        if (this.settings.globalConfig) {
+            const cfg = this.settings.globalConfig;
+            setVal('cfg_atk_prob_max', cfg.atkProbMax);
+            setVal('cfg_atk_prob_min', cfg.atkProbMin);
+            setVal('cfg_morale_threshold', cfg.moraleThreshold);
+            setVal('cfg_morale_inf', cfg.moraleInf);
+            setVal('cfg_stamina_inf', cfg.staminaInf);
+            setVal('cfg_base_evade', cfg.baseEvade);
+            setVal('cfg_evade_bonus', cfg.evadeBonus);
+            setVal('cfg_shield_pen', cfg.shieldPen);
+            setVal('cfg_armor_pen', cfg.armorPen);
+            setVal('cfg_def_bonus', cfg.defBonus);
+            setVal('cfg_shield_base_mult', cfg.shieldBaseMult);
+            setVal('cfg_armor_base_mult', cfg.armorBaseMult);
+            setVal('cfg_defending_bonus', cfg.defendingBonus);
+            setVal('cfg_defending_duration', cfg.defendingDuration);
+            setVal('cfg_damage_reduction', cfg.damageReduction);
+            setVal('cfg_pre_delay', cfg.preDelay);
+            setVal('cfg_interval_evade', cfg.intervalEvade);
+            setVal('cfg_interval_block', cfg.intervalBlock);
+            setVal('cfg_attack_cost', cfg.attackCost);
+            setVal('cfg_evade_cost', cfg.evadeCost);
+            setVal('cfg_stamina_regen', cfg.staminaRegen);
+            setVal('cfg_interval_stamina_bonus', cfg.intervalStaminaBonus);
+            setVal('cfg_enemy_block_area', cfg.enemyBlockArea);
+            setVal('cfg_enemy_max_slow', cfg.enemyMaxSlow);
+            setVal('cfg_ally_pass_area', cfg.allyPassArea);
+            setVal('cfg_ally_max_slow', cfg.allyMaxSlow);
+            setVal('cfg_knockback_max_dist', cfg.knockbackMaxDist);
+            setVal('cfg_death_knockback_mult', cfg.deathKnockbackMult);
+            setVal('cfg_knockback_force_mult', cfg.knockbackForceMult);
+            setVal('cfg_knockback_decay', cfg.knockbackDecay);
+            setVal('cfg_knockback_collision_threshold', cfg.knockbackCollisionThreshold);
+        }
+    }
+
+    saveCurrentSettings() {
+        if (!this.settings) this.settings = {};
+
+        const getVal = (id, def = 0) => {
+            const elem = document.getElementById(id);
+            return elem ? Number(elem.value) : def;
+        };
+
+        const getSelectVal = (id) => {
+            const elem = document.getElementById(id);
+            return elem ? elem.value : '';
+        };
+
+        // Save Team A
+        this.settings.teamA = {
+            selectedPreset: getSelectVal('preset_A') || '',
+            count: getVal('count_A', 10),
+            hp: getVal('hp_A'),
+            atk: getVal('atk_A'),
+            as: getVal('as_A'),
+            rng: getVal('rng_A'),
+            spd: getVal('spd_A'),
+            shd: getVal('shd_A'),
+            arm: getVal('arm_A'),
+            mst: getVal('mst_A'),
+            mor: getVal('mor_A'),
+            mass: getVal('mass_A', 1)
+        };
+
+        // Save Team B
+        this.settings.teamB = {
+            selectedPreset: getSelectVal('preset_B') || '',
+            count: getVal('count_B', 1),
+            hp: getVal('hp_B'),
+            atk: getVal('atk_B'),
+            as: getVal('as_B'),
+            rng: getVal('rng_B'),
+            spd: getVal('spd_B'),
+            shd: getVal('shd_B'),
+            arm: getVal('arm_B'),
+            mst: getVal('mst_B'),
+            mor: getVal('mor_B'),
+            mass: getVal('mass_B', 1)
+        };
+
+        // Save Global Config
+        this.settings.globalConfig = {
+            atkProbMax: getVal('cfg_atk_prob_max', 1.0),
+            atkProbMin: getVal('cfg_atk_prob_min', 0.3),
+            moraleThreshold: getVal('cfg_morale_threshold', 0.2),
+            moraleInf: getVal('cfg_morale_inf', 0.4),
+            staminaInf: getVal('cfg_stamina_inf', 0.3),
+            baseEvade: getVal('cfg_base_evade', 0.1),
+            evadeBonus: getVal('cfg_evade_bonus', 2.0),
+            shieldPen: getVal('cfg_shield_pen', 0.5),
+            armorPen: getVal('cfg_armor_pen', 0.5),
+            defBonus: getVal('cfg_def_bonus', 1.5),
+            shieldBaseMult: getVal('cfg_shield_base_mult', 1.5),
+            armorBaseMult: getVal('cfg_armor_base_mult', 1.0),
+            defendingBonus: getVal('cfg_defending_bonus', 1.3),
+            defendingDuration: getVal('cfg_defending_duration', 2.0),
+            damageReduction: getVal('cfg_damage_reduction', 0.5),
+            preDelay: getVal('cfg_pre_delay', 0.5),
+            intervalEvade: getVal('cfg_interval_evade', 0.5),
+            intervalBlock: getVal('cfg_interval_block', 0.8),
+            attackCost: getVal('cfg_attack_cost', 10),
+            evadeCost: getVal('cfg_evade_cost', 5),
+            staminaRegen: getVal('cfg_stamina_regen', 1),
+            intervalStaminaBonus: getVal('cfg_interval_stamina_bonus', 2.0),
+            enemyBlockArea: getVal('cfg_enemy_block_area', 90),
+            enemyMaxSlow: getVal('cfg_enemy_max_slow', 70),
+            allyPassArea: getVal('cfg_ally_pass_area', 60),
+            allyMaxSlow: getVal('cfg_ally_max_slow', 20),
+            knockbackMaxDist: getVal('cfg_knockback_max_dist', 1.0),
+            deathKnockbackMult: getVal('cfg_death_knockback_mult', 1.5),
+            knockbackForceMult: getVal('cfg_knockback_force_mult', 600),
+            knockbackDecay: getVal('cfg_knockback_decay', 0.90),
+            knockbackCollisionThreshold: getVal('cfg_knockback_collision_threshold', 1.0)
+        };
+
+        // Preserve unitPresets if exists
+        if (!this.settings.unitPresets) {
+            this.settings.unitPresets = UNIT_PRESETS;
+        }
+
+        this.saveToLocalStorage();
+    }
+
+    exportToFile() {
+        this.saveCurrentSettings();
+        if (!this.settings) {
+            console.error('No settings to export');
+            return;
+        }
+
+        const jsonString = JSON.stringify(this.settings, null, 2);
+        const blob = new Blob([jsonString], { type: 'application/json' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = 'settings.json';
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+    }
+}
+
 class Unit {
     constructor(id, team, x, y, stats) {
         this.id = id;
@@ -225,7 +522,6 @@ class Unit {
         this.x = x;
         this.y = y;
         
-        // Stats
         this.maxHp = stats.hp;
         this.hp = stats.hp;
         this.atk = stats.atk;
@@ -238,23 +534,22 @@ class Unit {
         this.stamina = stats.mst;
         this.maxMorale = stats.mor;
         this.morale = stats.mor;
+        this.mass = stats.mass || 1;
         
-        // State
         this.state = STATES.IDLE;
         this.stateTimer = 0;
+        this.defendingDecisionTimer = 0; // 방어 중 공격 판단 타이머
         this.intent = INTENTS.ENGAGE;
         
-        // Visualization Props
         this.radius = 16;
-        this.angle = 0; // 바라보는 방향 (라디안)
+        this.angle = 0;
         
-        // Animation Vars
-        this.animState = 'IDLE'; // Visual state (ATTACK, DEFEND, etc.)
+        this.animState = 'IDLE';
         this.animTimer = 0;
         this.visualEffects = []; 
         
-        this.offsetX = 0; // For attack lunge
-        this.shakeX = 0;  // For hit shake
+        this.offsetX = 0;
+        this.shakeX = 0;
         this.shakeY = 0;
         
         this.shieldScale = 1.0; 
@@ -263,6 +558,13 @@ class Unit {
         this.showSwipe = false;
         this.hitFlash = 0; 
         this.hitIntensity = 0;
+        
+        this.target = null;
+        this.attacker = null;
+        
+        this.knockbackX = 0;
+        this.knockbackY = 0;
+        this.knockbackVel = 0;
     }
 
     addTextEffect(value, color) {
@@ -275,55 +577,129 @@ class Unit {
         });
     }
 
-    // --- Main Update Loop ---
-    update(dt, enemy, config) {
-        // 1. Visual & Physics Update (Animation)
+    update(dt, allUnits, config) {
         this.updateVisuals(dt);
 
-        if (this.state === STATES.DEAD) return;
-        if (this.hp <= 0) { this.die(); return; }
+        if (this.state === STATES.DEAD) {
+            if (this.knockbackVel > 0) {
+                const knockbackDecay = config.knockbackDecay;
+                const moveDist = this.knockbackVel * dt;
+                this.x += this.knockbackX * moveDist;
+                this.y += this.knockbackY * moveDist;
+                this.knockbackVel *= knockbackDecay;
+                if (this.knockbackVel < 2.0) {
+                    this.knockbackVel = 0;
+                    this.knockbackX = 0;
+                    this.knockbackY = 0;
+                }
+            }
+            return;
+        }
+        
+        if (this.hp <= 0) { 
+            this.die(config); 
+            if (this.knockbackVel > 0) {
+                const knockbackDecay = config.knockbackDecay;
+                const moveDist = this.knockbackVel * dt;
+                this.x += this.knockbackX * moveDist;
+                this.y += this.knockbackY * moveDist;
+                this.knockbackVel *= knockbackDecay;
+                if (this.knockbackVel < 2.0) {
+                    this.knockbackVel = 0;
+                    this.knockbackX = 0;
+                    this.knockbackY = 0;
+                }
+            }
+            return; 
+        }
+
+        if (this.knockbackVel > 0) {
+            const knockbackDecay = config.knockbackDecay;
+            const moveDist = this.knockbackVel * dt;
+            this.x += this.knockbackX * moveDist;
+            this.y += this.knockbackY * moveDist;
+            this.knockbackVel *= knockbackDecay;
+            if (this.knockbackVel < 2.0) {
+                this.knockbackVel = 0;
+                this.knockbackX = 0;
+                this.knockbackY = 0;
+            }
+        }
 
         this.recoverStamina(dt, config);
 
-        // 2. Logic Update
-        // Rotate towards enemy if alive
+        let enemy = this.selectTarget(allUnits);
+        this.target = enemy;
+
         if (enemy && enemy.state !== STATES.DEAD) {
             const dx = enemy.x - this.x;
             const dy = enemy.y - this.y;
             const targetAngle = Math.atan2(dy, dx);
-            // Simple rotation (instant)
             this.angle = targetAngle;
         }
+        
+        if (!enemy) return;
 
         if (this.stateTimer > 0) {
             this.stateTimer -= dt;
             
-            // Visual Windup during PRE_ATTACK
             if (this.state === STATES.PRE_ATTACK) {
-                // Calculate progress 0 to 1
                 const totalTime = config.preDelay;
                 const elapsed = totalTime - this.stateTimer;
                 const progress = Math.min(1, elapsed / totalTime);
-                
-                // Windup: Pull back slightly (-3px)
-                // Use Sin for smooth pullback
                 this.offsetX = -3 * Math.sin(progress * Math.PI * 0.5);
+                
+                if (enemy && enemy.state !== STATES.DEAD && this.knockbackVel <= 0) {
+                    const dist = this.distanceTo(enemy);
+                    if (dist > this.range * 0.95) {
+                        const dx = enemy.x - this.x;
+                        const dy = enemy.y - this.y;
+                        const moveDist = Math.hypot(dx, dy);
+                        if (moveDist > 0) {
+                            const approachSpeed = this.moveSpeed * 0.5;
+                            const approachDist = approachSpeed * dt;
+                            this.x += (dx / moveDist) * approachDist;
+                            this.y += (dy / moveDist) * approachDist;
+                            const staminaLoss = (approachSpeed / this.moveSpeed) * config.staminaRegen * dt;
+                            this.stamina = Math.max(0, this.stamina - staminaLoss);
+                        }
+                    }
+                }
             }
 
             if (this.stateTimer <= 0) {
-                // Transition logic
                 if (this.state === STATES.INTERVAL || this.state === STATES.DEFENDING) {
                     this.decideNextAction(enemy, config);
                 } else if (this.state === STATES.PRE_ATTACK) {
                     this.executeAttack(enemy, config);
                 }
             } else {
-                if(this.state === STATES.DEFENDING) this.intent = INTENTS.DEFEND;
+                if(this.state === STATES.DEFENDING) {
+                    this.intent = INTENTS.DEFEND;
+                    // 방어 중에도 인터벌 시간마다 공격 판단
+                    if (this.defendingDecisionTimer > 0) {
+                        this.defendingDecisionTimer -= dt;
+                        if (this.defendingDecisionTimer <= 0) {
+                            // 인터벌 시간이 지나면 공격으로 전환할 수 있는지 판단
+                            const intervalTime = 1 / this.atkSpd;
+                            this.defendingDecisionTimer = intervalTime; // 다음 판단 시간 설정
+                            
+                            // 상대가 공격 준비 중이 아니고, 자신이 공격할 수 있는 상황이면 판단
+                            if (enemy && enemy.state !== STATES.PRE_ATTACK && 
+                                this.stamina >= config.attackCost && 
+                                this.distanceTo(enemy) <= this.range) {
+                                this.decideNextAction(enemy, config);
+                            }
+                        }
+                    } else {
+                        // 첫 판단 타이머 설정
+                        const intervalTime = 1 / this.atkSpd;
+                        this.defendingDecisionTimer = intervalTime;
+                    }
+                }
             }
-            return; // Busy
+            return;
         }
-
-        // Logic when not busy
         switch (this.state) {
             case STATES.RECOVER:
                 this.intent = INTENTS.REST;
@@ -332,6 +708,9 @@ class Unit {
 
             case STATES.IDLE:
             case STATES.MOVING:
+                if (this.knockbackVel > 0) {
+                    break;
+                }
                 const dist = this.distanceTo(enemy);
                 if (dist <= this.range) {
                     if (this.stamina < config.attackCost) {
@@ -350,11 +729,9 @@ class Unit {
     }
 
     updateVisuals(dt) {
-        // Effects
         this.visualEffects.forEach(e => { e.life -= dt; e.y -= 15 * dt; });
         this.visualEffects = this.visualEffects.filter(e => e.life > 0);
 
-        // Hit Shake & Flash
         if (this.hitFlash > 0) {
             this.hitFlash -= dt * 5; 
             if (this.hitFlash < 0) {
@@ -368,21 +745,16 @@ class Unit {
             }
         }
 
-        // Attack Animation (Thrust & Recovery)
         if (this.animState === 'ATTACK') {
             this.animTimer += dt;
             const duration = 0.3;
             const progress = Math.min(1, this.animTimer / duration);
 
-            // Thrust -> Recovery
-            // Note: Windup happens in PRE_ATTACK logic state
             if (progress < 0.3) {
-                // Thrust forward (+10px) fast
                 const t = progress / 0.3;
                 this.offsetX = -3 + (13 * t); 
                 this.showSwipe = true;
             } else {
-                // Recovery
                 const t = (progress - 0.3) / 0.7;
                 this.offsetX = 10 * (1 - t); 
                 this.showSwipe = false;
@@ -394,14 +766,12 @@ class Unit {
                 this.showSwipe = false;
             }
         } 
-        // Defend Animation
         else if (this.animState === 'DEFEND') {
             this.animTimer += dt;
             const duration = 0.4;
             const progress = Math.min(1, this.animTimer / duration);
 
             if (progress < 0.2) {
-                // Bounce shield
                 const t = progress / 0.2;
                 this.shieldScale = this.shieldBaseScale + (0.25 * Math.sin(t * Math.PI)); 
             } else {
@@ -414,13 +784,10 @@ class Unit {
             }
         } 
         else {
-            // IDLE Shield Breathing
-            // Use safe interpolation
             const diff = this.shieldBaseScale - this.shieldScale;
             if (Math.abs(diff) > 0.001) this.shieldScale += diff * dt * 5;
             else this.shieldScale = this.shieldBaseScale;
             
-            // Ensure offsetX returns to 0 if not attacking (e.g. interrupted)
             if (this.state !== STATES.PRE_ATTACK) {
                 this.offsetX *= 0.9;
             }
@@ -440,16 +807,23 @@ class Unit {
         if (enemy.state === STATES.PRE_ATTACK) atkProb *= 0.5;
 
         if (Math.random() < atkProb) {
-            this.state = STATES.IDLE; 
+            this.state = STATES.IDLE;
+            this.defendingDecisionTimer = 0; // 방어 타이머 초기화
         } else {
             this.state = STATES.DEFENDING;
-            this.stateTimer = 0.5;
+            this.stateTimer = config.defendingDuration;
+            this.defendingDecisionTimer = 0; // 판단 타이머 초기화 (다음 프레임에서 설정됨)
             this.intent = INTENTS.DEFEND;
         }
     }
 
     moveTowards(target, dt, config) {
         if (target.state === STATES.DEAD) return;
+        
+        if (this.knockbackVel > 0) {
+            return;
+        }
+        
         const dx = target.x - this.x;
         const dy = target.y - this.y;
         const dist = Math.hypot(dx, dy);
@@ -459,15 +833,29 @@ class Unit {
             return;
         }
 
-        const speed = this.moveSpeed * config.moveMult;
+        const moveMult = 1.2;
+        const targetX = this.x + (dx / dist) * (this.moveSpeed * moveMult * dt);
+        const targetY = this.y + (dy / dist) * (this.moveSpeed * moveMult * dt);
+        const obstructionMult = this.checkMovementObstruction(sim.units, targetX, targetY, config);
+        
+        if (obstructionMult <= 0) {
+            return;
+        }
+        
+        const speed = this.moveSpeed * moveMult * obstructionMult;
         const moveDist = speed * dt;
         this.x += (dx / dist) * moveDist;
         this.y += (dy / dist) * moveDist;
+        const staminaLoss = (moveMult - 1.0) * config.staminaRegen * dt;
+        this.stamina = Math.max(0, this.stamina - staminaLoss);
     }
 
     recoverStamina(dt, config) {
         if (this.stamina < this.maxStamina) {
-            this.stamina = Math.min(this.maxStamina, this.stamina + (config.staminaRegen * dt));
+            // 인터벌 상태일 때만 회복 보너스 적용
+            const bonus = (this.state === STATES.INTERVAL) ? config.intervalStaminaBonus : 1.0;
+            const regenAmount = config.staminaRegen * bonus * dt;
+            this.stamina = Math.min(this.maxStamina, this.stamina + regenAmount);
         }
     }
 
@@ -476,17 +864,14 @@ class Unit {
         this.stateTimer = config.preDelay;
         this.intent = INTENTS.ATTACK;
         this.addTextEffect('!', '#fbbf24');
-        // Visual windup handled in update()
     }
 
     executeAttack(enemy, config) {
         if (enemy.state === STATES.DEAD) { this.state = STATES.IDLE; return; }
 
-        // Trigger Visual Attack (The strike)
         this.animState = 'ATTACK';
         this.animTimer = 0;
 
-        // Damage Calculation
         const moraleRatio = this.morale / this.maxMorale;
         const staminaRatio = this.stamina / this.maxStamina;
 
@@ -501,7 +886,6 @@ class Unit {
         
         enemy.receiveAttack(rawDamage, this, config);
 
-        // Interval
         const intervalTime = 1 / this.atkSpd;
         this.state = STATES.INTERVAL;
         this.stateTimer = intervalTime;
@@ -509,11 +893,15 @@ class Unit {
     }
 
     receiveAttack(damage, attacker, config) {
+        this.attacker = attacker;
+        
+        // 전체 데미지 감소 보정 적용
+        damage = damage * config.damageReduction;
+        
         const canAct = (this.state === STATES.IDLE || this.state === STATES.DEFENDING || this.state === STATES.MOVING);
         
-        // Forced Hit
         if (!canAct) {
-             this.applyDamage(damage, false, config);
+             this.applyDamage(damage, false, config, attacker);
              return;
         }
 
@@ -529,7 +917,6 @@ class Unit {
             choice = Math.random() < blockChance ? 'BLOCK' : 'EVADE';
         }
 
-        // 1. Evade
         if (choice === 'EVADE') {
             const shieldPen = 1 - (this.shield / 20 * config.shieldPen);
             const armorPen = 1 - (this.armor / 20 * config.armorPen);
@@ -547,13 +934,10 @@ class Unit {
                 this.addTextEffect('회피!', '#4ade80');
                 sim.log(`${this.teamName()}: 회피 성공! (사기 +${morRec.toFixed(1)})`, 'log-evade');
                 
-                // Visual Slide Back
                 const dx = this.x - attacker.x;
                 const dy = this.y - attacker.y;
                 const dist = Math.hypot(dx, dy);
                 if(dist>0) { 
-                    // Move unit physics position slightly instead of just visual offset
-                    // to keep distance logic consistent
                     this.x += (dx/dist)*15;
                     this.y += (dy/dist)*15;
                 }
@@ -567,52 +951,107 @@ class Unit {
             }
         } 
         
-        // 2. Block
         if (choice === 'BLOCK' || (choice === 'EVADE' && canBlock)) {
             let defBonus = (choice === 'BLOCK' || isDefending) ? config.defBonus : 1.0;
             
-            const shieldDef = this.shield * 0.8 * defBonus;
-            const armorDef = this.armor * 0.5;
+            // 선형 스케일링 + 방어태세 보너스
+            const defendingMult = isDefending ? config.defendingBonus : 1.0;
+            const shieldDef = this.shield * config.shieldBaseMult * defBonus * defendingMult;
+            const armorDef = this.armor * config.armorBaseMult * defendingMult;
             const totalDef = shieldDef + armorDef;
             
             const finalDmg = Math.max(0, damage - totalDef);
             
-            this.hp -= finalDmg;
+            this.hp = Math.max(0, this.hp - finalDmg);
             this.applyMoraleDamage(finalDmg);
 
             this.addTextEffect(`방어 ${finalDmg.toFixed(0)}`, '#60a5fa');
             sim.log(`${this.teamName()}: 방어 (감쇄 ${totalDef.toFixed(1)}) -> 피해 ${finalDmg.toFixed(1)}`, 'log-defend');
             
-            // Trigger Visual Defend
+            if (attacker) {
+                this.applyKnockback(attacker, damage, config, false);
+            }
+            
             this.animState = 'DEFEND';
             this.animTimer = 0;
             this.shieldScale = 0.85;
 
-            this.state = STATES.INTERVAL;
-            this.stateTimer = config.intervalBlock;
-            this.intent = INTENTS.NONE;
+            // 방어 태세 중이었다면 방어 태세 유지, 아니면 INTERVAL
+            if (isDefending && this.stateTimer > 0) {
+                // 방어 태세 유지 (타이머는 그대로)
+                this.intent = INTENTS.DEFEND;
+            } else {
+                // 방어 태세가 아니었거나 타이머가 끝났으면 INTERVAL
+                this.state = STATES.INTERVAL;
+                this.stateTimer = config.intervalBlock;
+                this.intent = INTENTS.NONE;
+            }
             return;
         }
 
-        // 3. Full Damage
-        this.applyDamage(damage, true, config);
+        this.applyDamage(damage, true, config, attacker);
     }
 
-    applyDamage(damage, passiveMitigation, config) {
+    applyDamage(damage, passiveMitigation, config, attacker = null) {
         let finalDmg = damage;
         if (passiveMitigation) {
-            finalDmg = Math.max(0, damage - (this.armor * 0.5));
+            // 선형 스케일링 - 수동 감쇄는 방어태세 보너스 없음
+            const shieldDef = this.shield * config.shieldBaseMult;
+            const armorDef = this.armor * config.armorBaseMult;
+            const totalDef = shieldDef + armorDef;
+            finalDmg = Math.max(0, damage - totalDef);
+        } else {
+            // 행동 불가 상태여도 갑옷은 항상 착용하고 있으므로 기본 방어력 적용
+            // 방패는 들 수 없으므로 적용하지 않음
+            const armorDef = this.armor * config.armorBaseMult;
+            finalDmg = Math.max(0, damage - armorDef);
         }
         
-        this.hp -= finalDmg;
+        const wasAlive = this.hp > 0;
+        this.hp = Math.max(0, this.hp - finalDmg);
         this.applyMoraleDamage(finalDmg);
         
-        // Trigger Hit Visual
+        if (attacker) {
+            const isDeath = wasAlive && this.hp <= 0;
+            this.applyKnockback(attacker, damage, config, isDeath);
+        }
+        
         this.hitIntensity = finalDmg;
         this.hitFlash = 1.0;
         
         this.addTextEffect(`-${finalDmg.toFixed(1)}`, '#f87171');
         sim.log(`${this.teamName()}: 피격 ${finalDmg.toFixed(1)}`, 'log-attack');
+    }
+    
+    applyKnockback(attacker, damage, config, isDeath = false) {
+        if (!attacker || attacker.state === STATES.DEAD) return;
+        
+        const damageRatio = damage / this.maxHp;
+        let knockbackDist = damageRatio * config.knockbackMaxDist;
+        
+        // 공격자와 피격자의 질량 차이 반영
+        const massRatio = attacker.mass / this.mass;
+        const clampedMassRatio = Math.max(0.5, Math.min(2.0, massRatio)); // 0.5배 ~ 2.0배로 제한
+        knockbackDist *= clampedMassRatio;
+        
+        if (isDeath) {
+            knockbackDist *= config.deathKnockbackMult;
+        }
+        
+        const minKnockbackDist = 0.15;
+        knockbackDist = Math.max(knockbackDist, minKnockbackDist);
+        
+        if (knockbackDist > 0) {
+            const dx = this.x - attacker.x;
+            const dy = this.y - attacker.y;
+            const dist = Math.hypot(dx, dy);
+            
+            if (dist > 0) {
+                this.knockbackX = dx / dist;
+                this.knockbackY = dy / dist;
+                this.knockbackVel = knockbackDist * config.knockbackForceMult;
+            }
+        }
     }
 
     applyMoraleDamage(dmg) {
@@ -620,30 +1059,136 @@ class Unit {
         this.morale = Math.max(0, this.morale - loss);
     }
 
-    die() {
+    die(config = null) {
         this.state = STATES.DEAD;
+        this.hp = 0;
         sim.log(`${this.teamName()}: 사망 (사기 0)`, 'log-attack font-bold');
-        sim.endGame(this.team === 'A' ? 'B' : 'A');
     }
 
     distanceTo(other) { return Math.hypot(other.x - this.x, other.y - this.y); }
     teamName() { return this.team === 'A' ? '🔵' : '🔴'; }
+    
+    getOccupancyRadius() {
+        return this.radius;
+    }
+    
+    checkMovementObstruction(allUnits, targetX, targetY, config) {
+        let speedMultiplier = 1.0;
+        const moveDirX = targetX - this.x;
+        const moveDirY = targetY - this.y;
+        const moveDist = Math.hypot(moveDirX, moveDirY);
+        if (moveDist === 0) return speedMultiplier;
+        
+        const moveDirNormX = moveDirX / moveDist;
+        const moveDirNormY = moveDirY / moveDist;
+        
+        for (let other of allUnits) {
+            if (other === this || other.state === STATES.DEAD) continue;
+            
+            const dx = other.x - this.x;
+            const dy = other.y - this.y;
+            const dist = Math.hypot(dx, dy);
+            const otherRadius = other.getOccupancyRadius();
+            const myRadius = this.getOccupancyRadius();
+            const combinedRadius = myRadius + otherRadius;
+            
+            if (dist > combinedRadius * 2) continue;
+            
+            const isEnemy = (other.team !== this.team);
+            const isAlly = (other.team === this.team);
+            
+            if (isEnemy) {
+                const blockRadius = otherRadius * Math.sqrt(config.enemyBlockArea);
+                if (dist < blockRadius) {
+                    return 0;
+                }
+                
+                const meleeRadius = otherRadius;
+                if (dist < meleeRadius && dist >= blockRadius) {
+                    const meleeProgress = (dist - blockRadius) / (meleeRadius - blockRadius);
+                    const slowAmount = config.enemyMaxSlow * (1 - meleeProgress);
+                    speedMultiplier = Math.min(speedMultiplier, 1.0 - slowAmount);
+                }
+            } else if (isAlly) {
+                const passRadius = otherRadius * Math.sqrt(config.allyPassArea);
+                if (dist < passRadius) {
+                    const meleeProgress = dist / passRadius;
+                    const slowAmount = config.allyMaxSlow * (1 - meleeProgress);
+                    speedMultiplier = Math.min(speedMultiplier, 1.0 - slowAmount);
+                }
+            }
+        }
+        
+        return speedMultiplier;
+    }
+    
+    selectTarget(allUnits) {
+        const enemies = allUnits.filter(u => u.team !== this.team && u.state !== STATES.DEAD);
+        if (enemies.length === 0) return null;
+        
+        const teamUnits = allUnits.filter(u => u.team === this.team && u !== this && u.state !== STATES.DEAD);
+        const alreadyTargeted = new Set(teamUnits.map(u => u.target).filter(t => t !== null));
+        
+        if (this.attacker && enemies.includes(this.attacker)) {
+            return this.attacker;
+        }
+        
+        let targetingMe = enemies.find(e => e.target === this);
+        if (targetingMe) {
+            return targetingMe;
+        }
+        
+        const freeEnemies = enemies.filter(e => !alreadyTargeted.has(e));
+        
+        let nearest = null;
+        let nearestDist = Infinity;
+        for (let e of freeEnemies) {
+            const dist = this.distanceTo(e);
+            if (dist < nearestDist) {
+                nearestDist = dist;
+                nearest = e;
+            }
+        }
+        
+        if (!nearest) {
+            for (let e of enemies) {
+                const dist = this.distanceTo(e);
+                if (dist < nearestDist) {
+                    nearestDist = dist;
+                    nearest = e;
+                }
+            }
+        }
+        
+        let lowestHp = null;
+        let lowestHpRatio = Infinity;
+        for (let e of freeEnemies) {
+            const hpRatio = e.hp / e.maxHp;
+            if (hpRatio < lowestHpRatio) {
+                lowestHpRatio = hpRatio;
+                lowestHp = e;
+            }
+        }
+        
+        if (lowestHp && this.distanceTo(lowestHp) < nearestDist * 1.5) {
+            return lowestHp;
+        }
+        
+        return nearest;
+    }
 
-    // --- DRAWING LOGIC (From Tactical Design) ---
     draw(ctx) {
         ctx.save();
         
-        // 1. Position & Rotation
         const drawX = this.x + this.shakeX;
         const drawY = this.y + this.shakeY;
 
         ctx.translate(drawX, drawY);
         ctx.rotate(this.angle);
-        ctx.translate(this.offsetX, 0); // Lunge
+        ctx.translate(this.offsetX, 0);
 
         const isDead = (this.state === STATES.DEAD);
 
-        // --- Color Logic ---
         let finalColor, highlightColor;
 
         if (isDead) {
@@ -655,7 +1200,6 @@ class Unit {
                 highlightColor = "rgb(120, 65, 65)";
             }
         } else {
-            // Hit Flash (White)
             if (this.hitFlash > 0) {
                 const t = this.hitFlash * 0.8; 
                 
@@ -674,27 +1218,25 @@ class Unit {
                 
                 finalColor = `rgb(${r},${g},${b})`;
                 highlightColor = "#ffffff";
-            } else {
-                const moraleRatio = this.morale / this.maxMorale;
-                const colorRetention = 0.3 + (0.7 * moraleRatio);
-                const baseColor = this.team === 'A' ? {r:59, g:130, b:246} : {r:239, g:68, b:68};
-                const grayColor = {r:100, g:116, b:139};
+        } else {
+            const moraleRatio = this.morale / this.maxMorale;
+            const colorRetention = 0.3 + (0.7 * moraleRatio);
+            const baseColor = this.team === 'A' ? {r:59, g:130, b:246} : {r:239, g:68, b:68};
+            const grayColor = {r:100, g:116, b:139};
 
-                const r = Math.round(grayColor.r + (baseColor.r - grayColor.r) * colorRetention);
-                const g = Math.round(grayColor.g + (baseColor.g - grayColor.g) * colorRetention);
-                const b = Math.round(grayColor.b + (baseColor.b - grayColor.b) * colorRetention);
-                finalColor = `rgb(${r},${g},${b})`;
-                highlightColor = this.lightenColor(r, g, b, 40);
-            }
+            const r = Math.round(grayColor.r + (baseColor.r - grayColor.r) * colorRetention);
+            const g = Math.round(grayColor.g + (baseColor.g - grayColor.g) * colorRetention);
+            const b = Math.round(grayColor.b + (baseColor.b - grayColor.b) * colorRetention);
+            finalColor = `rgb(${r},${g},${b})`;
+            highlightColor = this.lightenColor(r, g, b, 40);
+        }
         }
 
-        // Shadow
         ctx.shadowColor = "rgba(0, 0, 0, 0.5)";
         ctx.shadowBlur = isDead ? 2 : 8;
         ctx.shadowOffsetX = 2;
         ctx.shadowOffsetY = 2;
 
-        // Swipe Effect
         if (this.showSwipe) {
             ctx.save();
             ctx.beginPath();
@@ -706,7 +1248,6 @@ class Unit {
             ctx.restore();
         }
 
-        // Body
         ctx.beginPath();
         ctx.arc(0, 0, this.radius, 0, Math.PI * 2);
         const gradient = ctx.createRadialGradient(-5, -5, 2, 0, 0, this.radius);
@@ -715,7 +1256,6 @@ class Unit {
         ctx.fillStyle = gradient;
         ctx.fill();
 
-        // Border & Stamina
         if (isDead) {
             if (this.team === 'A') ctx.strokeStyle = "#475569"; 
             else ctx.strokeStyle = "#5c4848"; 
@@ -735,7 +1275,6 @@ class Unit {
         if (!isDead) {
             const moraleRatio = this.morale / this.maxMorale;
             
-            // Direction Arrow
             ctx.beginPath();
             const arrowDist = this.radius - 3;
             ctx.moveTo(arrowDist, 0);
@@ -745,7 +1284,6 @@ class Unit {
             ctx.fillStyle = `rgba(255, 255, 255, ${0.5 + 0.5 * moraleRatio})`;
             ctx.fill();
 
-            // Shield
             if (this.shield > 0) {
                 const s = Math.max(0.1, this.shieldScale); 
                 const shieldR = this.radius + 6;
@@ -772,9 +1310,7 @@ class Unit {
 
         ctx.restore();
 
-        // HP Bar & Intent (Non-rotating)
         if (!isDead) {
-            // HP Bar
             const barX = drawX - 16; 
             const barY = drawY + this.radius + 10;
             const barW = 32;
@@ -795,7 +1331,6 @@ class Unit {
             ctx.lineWidth = 1;
             ctx.strokeRect(barX, barY, barW, barH);
 
-            // Intent Bubble
             ctx.fillStyle = 'rgba(255,255,255,0.85)';
             const bubbleX = drawX - 30;
             const bubbleY = drawY - 45;
@@ -808,10 +1343,9 @@ class Unit {
             }
             ctx.fill();
             ctx.fillStyle = '#1e293b'; ctx.font = 'bold 9px sans-serif';
-            ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+            ctx.textAlign = 'center';             ctx.textBaseline = 'middle';
             ctx.fillText(this.intent, drawX, bubbleY + 9);
 
-            // Floating Text Effects
             this.visualEffects.forEach(e => {
                 ctx.save(); ctx.globalAlpha = e.life;
                 ctx.font = 'bold 12px sans-serif'; ctx.fillStyle = e.color;
@@ -831,7 +1365,6 @@ class Unit {
     }
 }
 
-// --- Simulator Engine ---
 class BattleSimulator {
     constructor() {
         this.canvas = document.getElementById('battleCanvas');
@@ -845,7 +1378,9 @@ class BattleSimulator {
         this.timeScale = 1.0;
         this.elapsedTime = 0;
 
+        this.settingsManager = new SettingsManager();
         this.initPresets();
+        this.setupAutoSave();
         this.resize();
         window.addEventListener('resize', () => this.resize());
         
@@ -854,9 +1389,41 @@ class BattleSimulator {
         });
     }
 
-    initPresets() {
+    setupAutoSave() {
+        const inputIds = [
+            'count_A', 'hp_A', 'atk_A', 'as_A', 'rng_A', 'spd_A', 'shd_A', 'arm_A', 'mst_A', 'mor_A', 'mass_A',
+            'count_B', 'hp_B', 'atk_B', 'as_B', 'rng_B', 'spd_B', 'shd_B', 'arm_B', 'mst_B', 'mor_B', 'mass_B',
+            'preset_A', 'preset_B',
+            'cfg_atk_prob_max', 'cfg_atk_prob_min', 'cfg_morale_threshold', 'cfg_morale_inf', 'cfg_stamina_inf',
+            'cfg_base_evade', 'cfg_evade_bonus', 'cfg_shield_pen', 'cfg_armor_pen', 'cfg_def_bonus',
+            'cfg_shield_base_mult', 'cfg_armor_base_mult', 'cfg_defending_bonus', 'cfg_defending_duration', 'cfg_damage_reduction', 'cfg_pre_delay', 'cfg_interval_evade', 'cfg_interval_block',
+            'cfg_attack_cost', 'cfg_evade_cost', 'cfg_stamina_regen', 'cfg_interval_stamina_bonus', 'cfg_enemy_block_area', 'cfg_enemy_max_slow',
+            'cfg_ally_pass_area', 'cfg_ally_max_slow', 'cfg_knockback_max_dist', 'cfg_death_knockback_mult',
+            'cfg_knockback_force_mult', 'cfg_knockback_decay', 'cfg_knockback_collision_threshold'
+        ];
+
+        inputIds.forEach(id => {
+            const elem = document.getElementById(id);
+            if (elem) {
+                elem.addEventListener('change', () => {
+                    this.settingsManager.saveCurrentSettings();
+                });
+                elem.addEventListener('input', () => {
+                    clearTimeout(elem._saveTimeout);
+                    elem._saveTimeout = setTimeout(() => {
+                        this.settingsManager.saveCurrentSettings();
+                    }, 500);
+                });
+            }
+        });
+    }
+
+    updatePresetSelectors() {
         const selA = document.getElementById('preset_A');
         const selB = document.getElementById('preset_B');
+        
+        selA.innerHTML = '<option value="">선택...</option>';
+        selB.innerHTML = '<option value="">선택...</option>';
         
         for (let name in UNIT_PRESETS) {
             let optA = document.createElement('option');
@@ -867,15 +1434,47 @@ class BattleSimulator {
             optB.value = name; optB.innerText = name;
             selB.appendChild(optB);
         }
-        this.loadPreset('A', '징집병');
-        this.loadPreset('B', '경보병');
+    }
+
+    async initPresets() {
+        this.updatePresetSelectors();
+        
+        // Try to load settings from file or LocalStorage
+        const loaded = await this.settingsManager.loadFromFile();
+        if (loaded) {
+            this.settingsManager.applySettings();
+            // If preset is selected in settings, load it
+            const settings = this.settingsManager.getSettings();
+            if (settings && settings.teamA && settings.teamA.selectedPreset) {
+                // Preset is already applied via applySettings, but we ensure it's selected
+                const presetA = document.getElementById('preset_A');
+                if (presetA && presetA.value !== settings.teamA.selectedPreset) {
+                    presetA.value = settings.teamA.selectedPreset;
+                }
+            }
+            if (settings && settings.teamB && settings.teamB.selectedPreset) {
+                const presetB = document.getElementById('preset_B');
+                if (presetB && presetB.value !== settings.teamB.selectedPreset) {
+                    presetB.value = settings.teamB.selectedPreset;
+                }
+            }
+        } else {
+            // Fallback to default values
+            this.loadPreset('A', '징집병');
+            this.loadPreset('B', '중보병');
+            this.settingsManager.saveCurrentSettings();
+        }
     }
 
     loadPreset(team, presetName) {
         if (!presetName) return;
         const stats = UNIT_PRESETS[presetName];
-        const setVal = (id, val) => document.getElementById(id).value = val;
+        const setVal = (id, val) => {
+            const elem = document.getElementById(id);
+            if (elem) elem.value = val;
+        };
         
+        setVal(`preset_${team}`, presetName);
         setVal(`hp_${team}`, stats.hp);
         setVal(`atk_${team}`, stats.atk);
         setVal(`as_${team}`, stats.as);
@@ -885,6 +1484,11 @@ class BattleSimulator {
         setVal(`arm_${team}`, stats.arm);
         setVal(`mst_${team}`, stats.mst);
         setVal(`mor_${team}`, stats.mor);
+        if (stats.mass !== undefined) {
+            setVal(`mass_${team}`, stats.mass);
+        }
+        
+        this.settingsManager.saveCurrentSettings();
     }
 
     resize() {
@@ -903,7 +1507,7 @@ class BattleSimulator {
     }
 
     getStats(team) {
-        return {
+        const stats = {
             hp: Number(document.getElementById(`hp_${team}`).value),
             atk: Number(document.getElementById(`atk_${team}`).value),
             as: Number(document.getElementById(`as_${team}`).value),
@@ -914,6 +1518,27 @@ class BattleSimulator {
             mst: Number(document.getElementById(`mst_${team}`).value),
             mor: Number(document.getElementById(`mor_${team}`).value),
         };
+        
+        // 병종별 질량 자동 계산 (인간 기본 질량 10 + 장비 질량)
+        // 프리셋에서 가져오거나, 없으면 UI 값 또는 계산값 사용
+        const presetSelect = document.getElementById(`preset_${team}`);
+        const presetName = presetSelect ? presetSelect.value : null;
+        if (presetName && UNIT_PRESETS[presetName] && UNIT_PRESETS[presetName].mass) {
+            stats.mass = UNIT_PRESETS[presetName].mass;
+        } else {
+            // UI에서 직접 입력한 값이 있으면 사용
+            const uiMass = Number(document.getElementById(`mass_${team}`).value);
+            if (uiMass && uiMass > 0) {
+                stats.mass = uiMass;
+            } else {
+                // 기본값: 인간 기본 질량 10 + 방패와 갑옷을 고려한 장비 질량
+                const baseHumanMass = 10;
+                const equipmentMass = 1 + (stats.shd * 0.5) + (stats.arm * 0.3);
+                stats.mass = baseHumanMass + equipmentMass;
+            }
+        }
+        
+        return stats;
     }
 
     applyStats() {
@@ -923,21 +1548,49 @@ class BattleSimulator {
         
         const statsA = this.getStats('A');
         const statsB = this.getStats('B');
+        const countA = Math.max(1, Math.min(10, Number(document.getElementById('count_A').value) || 1));
+        const countB = Math.max(1, Math.min(10, Number(document.getElementById('count_B').value) || 1));
         
-        // Spawn distance: Range of A + Range of B + Buffer
         const spawnDist = (statsA.rng * RANGE_SCALE) + (statsB.rng * RANGE_SCALE) + 100;
         
-        this.units = [
-            new Unit(1, 'A', cx - spawnDist/2, cy, statsA),
-            new Unit(2, 'B', cx + spawnDist/2, cy, statsB)
-        ];
+        this.units = [];
+        let unitId = 1;
         
-        // Default facing
-        this.units[0].angle = 0;
-        this.units[1].angle = Math.PI;
+        const spacingA = 50;
+        const startYA = cy - ((countA - 1) * spacingA / 2);
+        for (let i = 0; i < countA; i++) {
+            const unit = new Unit(unitId++, 'A', cx - spawnDist/2, startYA + i * spacingA, statsA);
+            unit.angle = 0;
+            this.units.push(unit);
+        }
         
-        this.log("전투 시작", "font-bold text-center mt-2 mb-2 bg-slate-700");
+        const spacingB = 50;
+        const startYB = cy - ((countB - 1) * spacingB / 2);
+        for (let i = 0; i < countB; i++) {
+            const unit = new Unit(unitId++, 'B', cx + spawnDist/2, startYB + i * spacingB, statsB);
+            unit.angle = Math.PI;
+            this.units.push(unit);
+        }
+        
+        this.log(`전투 시작 (Blue: ${countA}명 vs Red: ${countB}명)`, "font-bold text-center mt-2 mb-2 bg-slate-700");
         this.start();
+    }
+    
+    findNearestEnemy(unit) {
+        let nearest = null;
+        let nearestDist = Infinity;
+        
+        for (let enemy of this.units) {
+            if (enemy.team === unit.team || enemy.state === STATES.DEAD) continue;
+            
+            const dist = unit.distanceTo(enemy);
+            if (dist < nearestDist) {
+                nearestDist = dist;
+                nearest = enemy;
+            }
+        }
+        
+        return nearest;
     }
 
     start() {
@@ -976,16 +1629,58 @@ class BattleSimulator {
     endGame(winnerTeam) {
         this.running = false;
         const overlay = document.getElementById('winnerOverlay');
-        const text = document.getElementById('winnerText');
+        const statsDiv = document.getElementById('resultStats');
         overlay.classList.remove('hidden');
         
-        if (winnerTeam === 'A') {
-            text.innerText = "Blue Team 승리!";
-            text.className = "text-4xl font-extrabold mb-4 animate-bounce text-blue-400";
-        } else {
-            text.innerText = "Red Team 승리!";
-            text.className = "text-4xl font-extrabold mb-4 animate-bounce text-red-400";
+        const teamAUnits = this.units.filter(u => u.team === 'A');
+        const teamBUnits = this.units.filter(u => u.team === 'B');
+        
+        let statsHTML = '<div class="grid grid-cols-2 gap-4">';
+        
+        if (teamAUnits.length > 0) {
+            const avgHp = teamAUnits.reduce((sum, u) => sum + u.hp, 0) / teamAUnits.length;
+            const avgMorale = teamAUnits.reduce((sum, u) => sum + u.morale, 0) / teamAUnits.length;
+            const avgStamina = teamAUnits.reduce((sum, u) => sum + u.stamina, 0) / teamAUnits.length;
+            const maxHp = teamAUnits[0].maxHp;
+            const maxMorale = teamAUnits[0].maxMorale;
+            const maxStamina = teamAUnits[0].maxStamina;
+            const aliveCount = teamAUnits.filter(u => u.state !== STATES.DEAD).length;
+            const isWinner = winnerTeam === 'A';
+            
+            statsHTML += `<div class="bg-blue-900/50 p-3 rounded border border-blue-700">
+                <h3 class="font-bold text-blue-300 mb-2 text-center text-sm">${isWinner ? '승리팀 ' : ''}Blue Team</h3>
+                <div class="space-y-1 text-sm">
+                    <div class="flex justify-between"><span>생존:</span><span class="font-bold">${aliveCount}명</span></div>
+                    <div class="flex justify-between"><span>평균 체력:</span><span class="font-bold">${avgHp.toFixed(1)} / ${maxHp}</span></div>
+                    <div class="flex justify-between"><span>평균 사기:</span><span class="font-bold">${avgMorale.toFixed(1)} / ${maxMorale}</span></div>
+                    <div class="flex justify-between"><span>평균 스테미너:</span><span class="font-bold">${avgStamina.toFixed(1)} / ${maxStamina}</span></div>
+                </div>
+            </div>`;
         }
+        
+        if (teamBUnits.length > 0) {
+            const avgHp = teamBUnits.reduce((sum, u) => sum + u.hp, 0) / teamBUnits.length;
+            const avgMorale = teamBUnits.reduce((sum, u) => sum + u.morale, 0) / teamBUnits.length;
+            const avgStamina = teamBUnits.reduce((sum, u) => sum + u.stamina, 0) / teamBUnits.length;
+            const maxHp = teamBUnits[0].maxHp;
+            const maxMorale = teamBUnits[0].maxMorale;
+            const maxStamina = teamBUnits[0].maxStamina;
+            const aliveCount = teamBUnits.filter(u => u.state !== STATES.DEAD).length;
+            const isWinner = winnerTeam === 'B';
+            
+            statsHTML += `<div class="bg-red-900/50 p-3 rounded border border-red-700">
+                <h3 class="font-bold text-red-300 mb-2 text-center text-sm">${isWinner ? '승리팀 ' : ''}Red Team</h3>
+                <div class="space-y-1 text-sm">
+                    <div class="flex justify-between"><span>생존:</span><span class="font-bold">${aliveCount}명</span></div>
+                    <div class="flex justify-between"><span>평균 체력:</span><span class="font-bold">${avgHp.toFixed(1)} / ${maxHp}</span></div>
+                    <div class="flex justify-between"><span>평균 사기:</span><span class="font-bold">${avgMorale.toFixed(1)} / ${maxMorale}</span></div>
+                    <div class="flex justify-between"><span>평균 스테미너:</span><span class="font-bold">${avgStamina.toFixed(1)} / ${maxStamina}</span></div>
+                </div>
+            </div>`;
+        }
+        
+        statsHTML += '</div>';
+        statsDiv.innerHTML = statsHTML;
     }
 
     loop(timestamp) {
@@ -996,23 +1691,81 @@ class BattleSimulator {
         this.elapsedTime += dt;
 
         const config = GlobalConfig.get();
-        const unitA = this.units[0];
-        const unitB = this.units[1];
-
-        if (unitA && unitB) {
-            unitA.update(dt, unitB, config);
-            unitB.update(dt, unitA, config);
+        
+        for (let unit of this.units) {
+            if (unit.state !== STATES.DEAD) {
+                unit.update(dt, this.units, config);
+            }
+        }
+        
+        this.resolveCollisions(dt, config);
+        
+        const teamAAlive = this.units.filter(u => u.team === 'A' && u.state !== STATES.DEAD).length;
+        const teamBAlive = this.units.filter(u => u.team === 'B' && u.state !== STATES.DEAD).length;
+        
+        if (teamAAlive === 0 && teamBAlive > 0) {
+            this.endGame('B');
+        } else if (teamBAlive === 0 && teamAAlive > 0) {
+            this.endGame('A');
         }
 
         this.render();
         requestAnimationFrame((t) => this.loop(t));
+    }
+    
+    resolveCollisions(dt, config) {
+        const maxIterations = 3;
+        
+        for (let iter = 0; iter < maxIterations; iter++) {
+            let hasCollision = false;
+            
+            for (let i = 0; i < this.units.length; i++) {
+                const unitA = this.units[i];
+                if (unitA.state === STATES.DEAD) continue;
+                
+                if (unitA.knockbackVel > config.knockbackCollisionThreshold) continue;
+                
+                const radiusA = unitA.getOccupancyRadius();
+                
+                for (let j = i + 1; j < this.units.length; j++) {
+                    const unitB = this.units[j];
+                    if (unitB.state === STATES.DEAD) continue;
+                    
+                    if (unitB.knockbackVel > config.knockbackCollisionThreshold) continue;
+                    
+                    const radiusB = unitB.getOccupancyRadius();
+                    const dx = unitB.x - unitA.x;
+                    const dy = unitB.y - unitA.y;
+                    const dist = Math.hypot(dx, dy);
+                    const minDist = radiusA + radiusB;
+                    
+                    if (dist < minDist && dist > 0) {
+                        hasCollision = true;
+                        
+                        const overlap = minDist - dist;
+                        const separationX = (dx / dist) * overlap * 0.5;
+                        const separationY = (dy / dist) * overlap * 0.5;
+                        
+                        const weightA = unitA.mass || 1.0;
+                        const weightB = unitB.mass || 1.0;
+                        const totalWeight = weightA + weightB;
+                        
+                        unitA.x -= separationX * (weightB / totalWeight);
+                        unitA.y -= separationY * (weightB / totalWeight);
+                        unitB.x += separationX * (weightA / totalWeight);
+                        unitB.y += separationY * (weightA / totalWeight);
+                    }
+                }
+            }
+            
+            if (!hasCollision) break;
+        }
     }
 
     render() {
         const ctx = this.ctx;
         ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
         
-        // Grid
         ctx.strokeStyle = "#334155";
         ctx.lineWidth = 1;
         ctx.beginPath();
@@ -1021,27 +1774,48 @@ class BattleSimulator {
         ctx.stroke();
 
         this.units.forEach(u => {
+            if (u.target && u.state !== STATES.DEAD && u.target.state !== STATES.DEAD) {
+                ctx.save();
+                ctx.strokeStyle = u.team === 'A' ? 'rgba(59, 130, 246, 0.5)' : 'rgba(239, 68, 68, 0.5)';
+                ctx.lineWidth = 2;
+                ctx.setLineDash([5, 5]);
+                ctx.beginPath();
+                ctx.moveTo(u.x, u.y);
+                ctx.lineTo(u.target.x, u.target.y);
+                ctx.stroke();
+                ctx.setLineDash([]);
+                ctx.restore();
+            }
+        });
+
+        this.units.forEach(u => {
             u.draw(ctx);
         });
     }
 }
 
-// Global instance
 const sim = new BattleSimulator();
 
-// UI Event Listeners
-document.getElementById('btnApply').onclick = () => sim.applyStats();
+document.getElementById('btnApply').onclick = () => {
+    sim.settingsManager.saveCurrentSettings();
+    sim.applyStats();
+};
+document.getElementById('btnSaveSettings').onclick = () => {
+    sim.settingsManager.exportToFile();
+};
 document.getElementById('btnPause').onclick = () => sim.togglePause();
 document.getElementById('btnReset').onclick = () => sim.reset();
 document.getElementById('speedSelect').onchange = (e) => sim.setSpeed(e.target.value);
 document.getElementById('preset_A').onchange = (e) => sim.loadPreset('A', e.target.value);
 document.getElementById('preset_B').onchange = (e) => sim.loadPreset('B', e.target.value);
-document.getElementById('btnRestart').onclick = () => sim.applyStats();
+document.getElementById('btnRestart').onclick = () => {
+    sim.settingsManager.saveCurrentSettings();
+    sim.applyStats();
+};
 document.getElementById('btnClearLog').onclick = () => {
     document.getElementById('logContainer').innerHTML = '';
 };
 
-// Global access
 window.sim = sim;
 </script>
 </body>

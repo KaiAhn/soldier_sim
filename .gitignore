@@ -1,0 +1,8 @@
+node_modules/
+.vscode/
+.cursor/
+*.bat
+*.ps1
+index_bkup.html
+settings.json
+
