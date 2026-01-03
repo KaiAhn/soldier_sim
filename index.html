@@ -233,10 +233,23 @@ if (window.location.protocol === 'file:') {
                     
                     <!-- Tab Content: 부대 AI -->
                     <div id="sub-tab-squad-ai" class="sub-tab-content active">
-                        <div class="mt-2">
-                            <h3 class="font-bold text-slate-300 text-sm border-b border-slate-600 pb-1">⚙️ 부대 AI 설정</h3>
-                            <div class="text-sm text-slate-400 p-2 text-center">
-                                부대 AI 설정은 향후 추가 예정입니다.
+                        <div class="space-y-3 mt-2">
+                            <h3 class="font-bold text-slate-300 text-sm border-b border-slate-600 pb-1">⚙️ 이동 & 반응</h3>
+                            <div class="grid grid-cols-2 gap-x-4 gap-y-1">
+                                <div class="flex justify-between items-center" title="유닛이 대형에서 벗어날 수 있는 최대 거리(px). 이 거리를 초과하면 강제로 대형으로 복귀. 범위: 100-1000"><label class="text-sm">리시 거리</label><input type="number" id="cfg_leash_distance" value="300" min="100" max="1000" step="10" class="w-16 border text-right text-black text-sm"></div>
+                                <div class="flex justify-between items-center" title="슬롯으로 복귀할 때의 스프링 강도(최대치). 높을수록 더 엄격하게 대형 유지. 범위: 0.1-2.0"><label class="text-sm">대형 강도</label><input type="number" id="cfg_formation_tightness" value="1.0" min="0.1" max="2.0" step="0.1" class="w-16 border text-right text-black text-sm"></div>
+                                <div class="flex justify-between items-center" title="유닛이 즉각적인 위협을 감지하는 반경(px). 이 범위 내의 적만 스캔. 범위: 50-500"><label class="text-sm">유닛 스캔 범위</label><input type="number" id="cfg_unit_scan_range" value="150" min="50" max="500" step="10" class="w-16 border text-right text-black text-sm"></div>
+                                <div class="flex justify-between items-center" title="타겟을 처치한 후 대형으로 복귀하기 전 대기 시간(초). 범위: 0.0-5.0"><label class="text-sm">전투 지속성</label><input type="number" id="cfg_combat_stickiness" value="1.0" min="0.0" max="5.0" step="0.1" class="w-16 border text-right text-black text-sm"></div>
+                                <div class="flex justify-between items-center" title="AI 판단 주기(초). 값이 클수록 성능 향상. 범위: 0.1-1.0"><label class="text-sm">AI 판단 간격</label><input type="number" id="cfg_ai_decision_interval" value="0.2" min="0.1" max="1.0" step="0.1" class="w-16 border text-right text-black text-sm"></div>
+                            </div>
+
+                            <h3 class="font-bold text-slate-300 text-sm border-b border-slate-600 pb-1">⚙️ 대형 강도 배수 (상황별)</h3>
+                            <div class="grid grid-cols-2 gap-x-4 gap-y-1">
+                                <div class="flex justify-between items-center" title="리시 상황에서 대형 강도에 적용되는 배수. 범위: 0.1-2.0"><label class="text-sm">리시 배수</label><input type="number" id="cfg_leash_tightness_mult" value="1.0" min="0.1" max="2.0" step="0.1" class="w-16 border text-right text-black text-sm"></div>
+                                <div class="flex justify-between items-center" title="대형 유지 상황에서 대형 강도에 적용되는 배수. 범위: 0.1-2.0"><label class="text-sm">대형 유지 배수</label><input type="number" id="cfg_formation_tightness_mult" value="1.0" min="0.1" max="2.0" step="0.1" class="w-16 border text-right text-black text-sm"></div>
+                                <div class="flex justify-between items-center" title="전투 중 대형 유지에 적용되는 배수. 범위: 0.1-2.0"><label class="text-sm">전투 중 배수</label><input type="number" id="cfg_combat_tightness_mult" value="0.7" min="0.1" max="2.0" step="0.1" class="w-16 border text-right text-black text-sm"></div>
+                                <div class="flex justify-between items-center" title="후퇴 중 대형 유지에 적용되는 배수. 범위: 0.1-2.0"><label class="text-sm">후퇴 중 배수</label><input type="number" id="cfg_retreat_tightness_mult" value="0.8" min="0.1" max="2.0" step="0.1" class="w-16 border text-right text-black text-sm"></div>
+                                <div class="flex justify-between items-center" title="포메이션 전환 중에 적용되는 배수. 범위: 0.1-2.0"><label class="text-sm">전환 중 배수</label><input type="number" id="cfg_transition_tightness_mult" value="0.9" min="0.1" max="2.0" step="0.1" class="w-16 border text-right text-black text-sm"></div>
                             </div>
                         </div>
                     </div>
@@ -319,12 +332,28 @@ if (window.location.protocol === 'file:') {
 
         <!-- Right: Log -->
         <div class="w-72 bg-slate-800 border-l border-slate-700 flex flex-col shadow-lg z-10">
-            <div class="p-2 border-b border-slate-700 font-bold flex justify-between items-center text-slate-300 text-xs">
-                <span><i class="fa-solid fa-list-ul"></i> 전투 로그</span>
-                <button id="btnClearLog" class="text-slate-500 hover:text-red-400 transition"><i class="fa-solid fa-trash"></i></button>
+            <div class="p-2 border-b border-slate-700">
+                <div class="flex justify-between items-center mb-2">
+                    <span class="font-bold text-slate-300 text-xs"><i class="fa-solid fa-list-ul"></i> 로그</span>
+                    <button id="btnClearLog" class="text-slate-500 hover:text-red-400 transition"><i class="fa-solid fa-trash"></i></button>
+                </div>
+                <!-- Tab Buttons -->
+                <div class="flex gap-1 border-b border-slate-600">
+                    <button class="log-tab-btn active" data-tab="squad-action">
+                        <i class="fa-solid fa-users"></i> 부대 액션
+                    </button>
+                    <button class="log-tab-btn" data-tab="combat-log">
+                        <i class="fa-solid fa-sword"></i> 전투 로그
+                    </button>
+                </div>
             </div>
-            <div id="logContainer" class="flex-1 overflow-y-auto p-2 font-mono leading-relaxed space-y-1 bg-slate-800">
-                <!-- Logs go here -->
+            <!-- Tab Content: 부대 액션 -->
+            <div id="log-tab-squad-action" class="log-tab-content active flex-1 overflow-y-auto p-2 font-mono leading-relaxed space-y-1 bg-slate-800">
+                <!-- Squad action logs go here -->
+            </div>
+            <!-- Tab Content: 전투 로그 -->
+            <div id="log-tab-combat-log" class="log-tab-content flex-1 overflow-y-auto p-2 font-mono leading-relaxed space-y-1 bg-slate-800">
+                <!-- Combat logs go here -->
             </div>
         </div>
     </div>

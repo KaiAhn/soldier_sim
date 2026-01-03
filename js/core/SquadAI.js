@@ -24,10 +24,12 @@ const SQUAD_TACTICS = {
 };
 
 class SquadAI {
-    constructor(squad) {
+    constructor(squad, battleSimulator = null) {
         this.squad = squad;
+        this.battleSimulator = battleSimulator; // BattleSimulator 참조 (로그용)
         this.state = SQUAD_STATES.MOVING;
         this.currentTactic = SQUAD_TACTICS.FREE_ATTACK;
+        this.lastState = null; // 상태 변경 감지용
         
         // Command enforcement (명령 강제도)
         this.commandEnforcement = {
@@ -110,15 +112,23 @@ class SquadAI {
         // Check squad morale
         const avgMorale = this.squad.getAverageMorale();
         if (avgMorale <= SQUAD_ROUTING_MORALE_THRESHOLD && this.state !== SQUAD_STATES.ROUTING) {
-            this.state = SQUAD_STATES.ROUTING;
+            this.setState(SQUAD_STATES.ROUTING);
             this.squad.startRouting();
+            this.logAction('자유 퇴각', `사기 ${(avgMorale * 100).toFixed(0)}%`);
             return;
         }
         
         if (avgMorale >= SQUAD_REORGANIZE_MORALE_THRESHOLD && this.state === SQUAD_STATES.ROUTING) {
             // Try to reorganize
-            this.state = SQUAD_STATES.REORGANIZING;
+            this.setState(SQUAD_STATES.REORGANIZING);
             this.squad.startReorganizing();
+            this.logAction('재정비 시작', `사기 ${(avgMorale * 100).toFixed(0)}%`);
+        }
+        
+        // 상태 변경 감지 및 로그
+        if (this.lastState !== this.state) {
+            this.onStateChanged(this.lastState, this.state);
+            this.lastState = this.state;
         }
         
         // Check if squad is destroyed
@@ -240,13 +250,43 @@ class SquadAI {
     updateMoving(dt, allSquads, config) {
         // Check if enemy is in range
         if (this.targetSquad && this.inCombat) {
-            this.state = SQUAD_STATES.ENGAGING;
+            this.setState(SQUAD_STATES.ENGAGING);
             this.squad.startEngaging();
+            this.logAction('교전 돌입');
             return;
         }
         
-        // Move towards target or maintain position
-        // (This is handled by squad's movement logic)
+        // Move towards target squad if available
+        if (this.targetSquad && !this.targetSquad.isDestroyed()) {
+            const targetCenter = this.targetSquad.getFormationCenter();
+            const ourCenter = this.squad.getFormationCenter();
+            
+            const dx = targetCenter.x - ourCenter.x;
+            const dy = targetCenter.y - ourCenter.y;
+            const dist = Math.hypot(dx, dy);
+            
+            // 적이 너무 가까우면 정지
+            if (dist < 50) {
+                return;
+            }
+            
+            // 부대 각도는 세팅 상태의 값 유지 (SettingsManager에서 설정된 각도 보존)
+            // const targetAngle = Math.atan2(dy, dx);
+            // this.squad.angle = targetAngle;
+            
+            // 부대 중심을 적을 향해 이동
+            const moveSpeed = this.squad.getAverageMoveSpeed(); // 유닛의 평균 이동 속도 사용
+            const moveDist = moveSpeed * dt;
+            
+            if (dist > moveDist) {
+                this.squad.centerX += (dx / dist) * moveDist;
+                this.squad.centerY += (dy / dist) * moveDist;
+            } else {
+                // 목표 지점에 도달
+                this.squad.centerX = targetCenter.x;
+                this.squad.centerY = targetCenter.y;
+            }
+        }
     }
     
     updateEngaging(dt, allSquads, config) {
@@ -257,17 +297,19 @@ class SquadAI {
         
         // Enter combat
         if (this.inCombat) {
-            this.state = SQUAD_STATES.IN_COMBAT;
+            this.setState(SQUAD_STATES.IN_COMBAT);
             this.combatStartTime = performance.now();
             this.squad.startCombat();
+            this.logAction('교전 시작');
         }
     }
     
     updateInCombat(dt, allSquads, config) {
         // Check if should disengage
         if (!this.inCombat) {
-            this.state = SQUAD_STATES.RETREATING;
+            this.setState(SQUAD_STATES.RETREATING);
             this.squad.startRetreating();
+            this.logAction('교전 이탈');
             return;
         }
         
@@ -289,8 +331,9 @@ class SquadAI {
         // Check if should defend/evade
         const shouldDefend = this.shouldDefendOrEvade();
         if (shouldDefend.defend) {
-            this.state = SQUAD_STATES.DEFENDING;
+            this.setState(SQUAD_STATES.DEFENDING);
             this.squad.startDefending();
+            this.logAction('방어 태세');
         }
         
         // Tactical decision
@@ -303,15 +346,17 @@ class SquadAI {
     updateDefending(dt, allSquads, config) {
         // Check if can re-engage
         if (!this.shouldDefendOrEvade().defend) {
-            this.state = SQUAD_STATES.IN_COMBAT;
+            this.setState(SQUAD_STATES.IN_COMBAT);
             this.squad.startCombat();
+            this.logAction('재교전');
             return;
         }
         
         // Check if should try to disengage
         if (this.shouldDefendOrEvade().evade) {
-            this.state = SQUAD_STATES.RETREATING;
+            this.setState(SQUAD_STATES.RETREATING);
             this.squad.startRetreating();
+            this.logAction('후퇴');
         }
     }
     
@@ -319,8 +364,9 @@ class SquadAI {
         // Move away from enemy
         if (!this.inCombat) {
             // Successfully disengaged
-            this.state = SQUAD_STATES.REORGANIZING;
+            this.setState(SQUAD_STATES.REORGANIZING);
             this.squad.startReorganizing();
+            this.logAction('재정비');
         }
     }
     
@@ -332,11 +378,13 @@ class SquadAI {
         if (avgStamina >= SQUAD_REENGAGE_STAMINA_THRESHOLD && avgMorale >= SQUAD_REENGAGE_MORALE_THRESHOLD) {
             // Ready to fight again
             if (this.targetSquad && this.inCombat) {
-                this.state = SQUAD_STATES.ENGAGING;
+                this.setState(SQUAD_STATES.ENGAGING);
                 this.squad.startEngaging();
+                this.logAction('재교전 준비 완료');
             } else {
-                this.state = SQUAD_STATES.MOVING;
+                this.setState(SQUAD_STATES.MOVING);
                 this.squad.startMoving();
+                this.logAction('전진');
             }
         }
     }
@@ -388,9 +436,9 @@ class SquadAI {
             weights[SQUAD_TACTICS.FALL_BACK] *= 1.3;
         }
         
-        // Adjust based on morale
+        // Adjust based on morale (비율 0~1)
         const avgMorale = this.squad.getAverageMorale();
-        if (avgMorale < 30) {
+        if (avgMorale < 0.3) { // 30% 미만
             weights[SQUAD_TACTICS.RECEDING] *= 2.0;
             weights[SQUAD_TACTICS.FALL_BACK] *= 2.0;
         }
@@ -402,9 +450,23 @@ class SquadAI {
         for (let [tactic, weight] of Object.entries(weights)) {
             rand -= weight;
             if (rand <= 0) {
+                const oldTactic = this.currentTactic;
                 this.currentTactic = tactic;
                 this.squad.setTactic(this.currentTactic);
                 this.combatCooldown = 3.0; // 3초 쿨타임
+                
+                // 전술 변경 로그
+                if (oldTactic !== tactic) {
+                    const tacticNames = {
+                        [SQUAD_TACTICS.FORCED_ATTACK]: '강제 공격',
+                        [SQUAD_TACTICS.FREE_ATTACK]: '자유 공격',
+                        [SQUAD_TACTICS.FORMATION_ATTACK]: '대형 유지 공격',
+                        [SQUAD_TACTICS.STAND_GROUND]: '엄격한 수비',
+                        [SQUAD_TACTICS.RECEDING]: '이탈 시도',
+                        [SQUAD_TACTICS.FALL_BACK]: '후퇴'
+                    };
+                    this.logAction('전술 변경', tacticNames[tactic] || tactic);
+                }
                 break;
             }
         }
@@ -414,8 +476,8 @@ class SquadAI {
         if (this.chargeActive) return false;
         if (this.chargeCooldown > 0) return false;
         if (!this.squad.formation.canCharge()) return false;
-        // Check minimum morale for charge (임의값: 10, 전역설정으로 변경 가능)
-        const CHARGE_MIN_MORALE = 10;
+        // Check minimum morale for charge (비율 0~1, 10% = 0.1)
+        const CHARGE_MIN_MORALE = 0.1;
         if (this.squad.getAverageMorale() < CHARGE_MIN_MORALE) return false;
         if (this.inCombat) return false; // Already in combat
         
@@ -440,6 +502,8 @@ class SquadAI {
         
         // Set charge state for all units
         this.squad.setChargeState(true);
+        
+        this.logAction('돌격!', '사기 회복');
     }
     
     getCommandEnforcement() {
@@ -448,6 +512,37 @@ class SquadAI {
     
     getFormationDesire() {
         return this.formationDesire[this.state] || 0.5;
+    }
+    
+    // 상태 변경 감지 및 로그
+    setState(newState) {
+        this.lastState = this.state;
+        this.state = newState;
+    }
+    
+    // 상태 변경 시 로그
+    onStateChanged(oldState, newState) {
+        // 초기 상태는 로그하지 않음
+        if (oldState === null) return;
+        
+        const stateNames = {
+            [SQUAD_STATES.MOVING]: '전진',
+            [SQUAD_STATES.ENGAGING]: '교전 돌입',
+            [SQUAD_STATES.IN_COMBAT]: '교전 중',
+            [SQUAD_STATES.DEFENDING]: '방어',
+            [SQUAD_STATES.RETREATING]: '후퇴',
+            [SQUAD_STATES.REORGANIZING]: '재정비',
+            [SQUAD_STATES.ROUTING]: '자유 퇴각'
+        };
+        
+        const actionName = stateNames[newState] || newState;
+        this.logAction(actionName);
+    }
+    
+    // 부대 액션 로그
+    logAction(action, details = '') {
+        if (!this.battleSimulator) return;
+        this.battleSimulator.logSquadAction(this.squad, action, details);
     }
 }
 

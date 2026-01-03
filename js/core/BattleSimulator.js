@@ -7,7 +7,8 @@ class BattleSimulator {
             return;
         }
         this.ctx = this.canvas.getContext('2d');
-        this.logContainer = document.getElementById('logContainer');
+        this.logContainer = document.getElementById('log-tab-combat-log'); // 전투 로그 컨테이너
+        this.squadActionContainer = document.getElementById('log-tab-squad-action'); // 부대 액션 컨테이너
         
         this.units = [];
         this.squads = [];
@@ -73,6 +74,7 @@ class BattleSimulator {
     }
 
     log(msg, className = '') {
+        if (!this.logContainer) return;
         const time = `[${(this.elapsedTime).toFixed(1)}s] `;
         const div = document.createElement('div');
         div.className = `log-entry ${className}`;
@@ -81,11 +83,41 @@ class BattleSimulator {
         this.logContainer.scrollTop = this.logContainer.scrollHeight;
     }
 
+    logSquadAction(squad, action, details = '') {
+        if (!this.squadActionContainer) return;
+        const time = `[${(this.elapsedTime).toFixed(1)}s] `;
+        const teamName = squad.team === 'A' ? 'Blue Team' : 'Red Team';
+        const teamColor = squad.team === 'A' ? 'text-blue-400' : 'text-red-400';
+        
+        const div = document.createElement('div');
+        div.className = `log-entry ${teamColor}`;
+        div.innerHTML = `<span class="text-slate-500 text-[10px]">${time}</span> <span class="font-bold">${teamName}</span>: ${action}${details ? ` - ${details}` : ''}`;
+        this.squadActionContainer.appendChild(div);
+        this.squadActionContainer.scrollTop = this.squadActionContainer.scrollHeight;
+    }
+
     applyStats() {
         // 모든 세팅 작업은 SettingsManager에서 처리
-        // 여기서는 단순히 SettingsManager가 생성한 units를 받아서 사용
-        this.reset();
-        this.settingsManager.updateUnits();
+        // SettingsManager.initialize()에서 이미 units와 squads를 생성했으므로
+        // 여기서는 중복 생성하지 않고 기존 설정(각도 등)을 보존하며 AI만 초기화
+        
+        // reset()과 updateUnits() 호출 제거 - 중복 생성 방지 및 각도 보존
+        // this.reset(); // 제거: 기존 squads와 units 유지
+        // this.settingsManager.updateUnits(); // 제거: 중복 생성 방지
+        
+        // 시뮬레이션 상태만 리셋 (units와 squads는 유지)
+        this.running = false;
+        this.paused = false;
+        this.elapsedTime = 0;
+        if (this.logContainer) this.logContainer.innerHTML = '';
+        if (this.squadActionContainer) this.squadActionContainer.innerHTML = '';
+        
+        // 모든 squad에 대해 AI 초기화
+        for (let squad of this.squads) {
+            if (squad && typeof squad.initializeAI === 'function') {
+                squad.initializeAI(this); // BattleSimulator 참조 전달
+            }
+        }
         
         const countA = this.units.filter(u => u.team === 'A').length;
         const countB = this.units.filter(u => u.team === 'B').length;
@@ -100,7 +132,8 @@ class BattleSimulator {
         this.running = false;
         this.paused = false;
         this.elapsedTime = 0;
-        this.logContainer.innerHTML = '';
+        if (this.logContainer) this.logContainer.innerHTML = '';
+        if (this.squadActionContainer) this.squadActionContainer.innerHTML = '';
     }
 
     start() {
@@ -300,98 +333,7 @@ class BattleSimulator {
             ctx.translate(this.canvas.width / 2, this.canvas.height / 2);
         }
 
-        // Formation shapes (before units for proper layering)
-        this.squads.forEach(squad => {
-            let points = [];
-            let centerX, centerY, angle;
-            let isTransitioning = false;
-            
-            // 프리셋 상태 (FormationManager가 없을 때) 또는 실행 중 상태 확인
-            if (squad.formationManager && squad.currentSlots && squad.currentSlots.length >= 3) {
-                // 실행 중: currentSlots 사용
-                points = squad.currentSlots.map(s => ({ x: s.x, y: s.y }));
-                const center = squad.getFormationCenter();
-                centerX = center.x;
-                centerY = center.y;
-                angle = squad.angle;
-                isTransitioning = squad.formationManager.isInTransition();
-            } else if (squad.formation && squad.formation.idealPositions && squad.formation.idealPositions.length >= 3) {
-                // 프리셋 상태: idealPositions를 직접 사용
-                centerX = squad.centerX;
-                centerY = squad.centerY;
-                angle = squad.angle;
-                
-                // idealPositions를 월드 좌표로 변환
-                const cos = Math.cos(angle);
-                const sin = Math.sin(angle);
-                points = squad.formation.idealPositions.map(pos => ({
-                    x: centerX + (pos.x * cos - pos.y * sin),
-                    y: centerY + (pos.x * sin + pos.y * cos)
-                }));
-            } else {
-                return; // 그릴 수 없음
-            }
-            
-            const hull = getConvexHull(points);
-            if (hull.length === 0) return;
-            
-            ctx.save();
-            
-            // Transition 중에는 주황색, 아니면 노란색
-            ctx.fillStyle = isTransitioning ? "rgba(249, 115, 22, 0.1)" : "rgba(234, 179, 8, 0.15)"; 
-            ctx.strokeStyle = isTransitioning ? "rgba(249, 115, 22, 0.5)" : "rgba(234, 179, 8, 0.4)";
-            const cameraZoom = this.settingsManager && this.settingsManager.camera ? this.settingsManager.camera.zoom : 1.0;
-            ctx.lineWidth = 2 / cameraZoom;
-            ctx.setLineDash([5 / cameraZoom, 5 / cameraZoom]);
-            
-            ctx.beginPath();
-            ctx.moveTo(hull[0].x, hull[0].y);
-            for (let i = 1; i < hull.length; i++) {
-                ctx.lineTo(hull[i].x, hull[i].y);
-            }
-            ctx.closePath();
-            
-            ctx.fill(); 
-            ctx.stroke();
-            ctx.setLineDash([]);
-            
-            // 포메이션 방향 화살표 그리기 (노란색)
-            const arrowLength = 80 / cameraZoom;
-            const arrowHeadSize = 20 / cameraZoom;
-            const arrowX = centerX + Math.cos(angle) * arrowLength;
-            const arrowY = centerY + Math.sin(angle) * arrowLength;
-            
-            ctx.strokeStyle = "rgba(234, 179, 8, 0.8)";
-            ctx.fillStyle = "rgba(234, 179, 8, 0.8)";
-            ctx.lineWidth = 3 / cameraZoom;
-            ctx.lineCap = 'round';
-            ctx.lineJoin = 'round';
-            
-            // 화살표 몸체
-            ctx.beginPath();
-            ctx.moveTo(centerX, centerY);
-            ctx.lineTo(arrowX, arrowY);
-            ctx.stroke();
-            
-            // 화살표 머리 (화살표 끝에서 양쪽으로 퍼지는 형태)
-            const headAngle1 = angle - Math.PI + Math.PI * 0.2; // 뒤쪽 왼쪽
-            const headAngle2 = angle - Math.PI - Math.PI * 0.2; // 뒤쪽 오른쪽
-            ctx.beginPath();
-            ctx.moveTo(arrowX, arrowY);
-            ctx.lineTo(
-                arrowX + Math.cos(headAngle1) * arrowHeadSize,
-                arrowY + Math.sin(headAngle1) * arrowHeadSize
-            );
-            ctx.lineTo(arrowX, arrowY);
-            ctx.lineTo(
-                arrowX + Math.cos(headAngle2) * arrowHeadSize,
-                arrowY + Math.sin(headAngle2) * arrowHeadSize
-            );
-            ctx.closePath();
-            ctx.fill();
-            
-            ctx.restore();
-        });
+
 
         // 타겟팅 라인
         this.units.forEach(u => {
@@ -435,6 +377,14 @@ class BattleSimulator {
                 u.draw(ctx);
             } else {
                 console.warn('BattleSimulator.render: Unit missing or invalid:', u);
+            }
+        });
+        
+        // Formation shapes 렌더링 (시뮬레이션 중에도 표시)
+        const cameraZoom = this.settingsManager && this.settingsManager.camera ? this.settingsManager.camera.zoom : 1.0;
+        this.squads.forEach(squad => {
+            if (squad && typeof squad.drawFormationShape === 'function') {
+                squad.drawFormationShape(ctx, cameraZoom);
             }
         });
         

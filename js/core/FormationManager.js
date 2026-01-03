@@ -72,10 +72,11 @@ class FormationManager {
         const sin = Math.sin(angle);
         
         // Convert relative slots to world positions (same as formation_simulator.html)
+        // Canvas 좌표계: 위쪽 = -Math.PI/2
         const worldSlots = slots.map(slot => ({
             x: centerX + (slot.x * cos - slot.y * sin),
             y: centerY + (slot.x * sin + slot.y * cos),
-            heading: angle + (slot.heading || 0),
+            heading: -Math.PI / 2 + angle + (slot.heading || 0),
             assigned: false
         }));
 

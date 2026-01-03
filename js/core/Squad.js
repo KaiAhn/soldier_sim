@@ -55,8 +55,8 @@ class Squad {
             const baseHeading = -Math.PI / 2; // 위쪽 방향
             const worldHeading = baseHeading + (pos.heading || 0);
             
-            // Unit 생성
-            const unit = new Unit(unitId++, this.team, worldX, worldY, stats);
+            // Unit 생성 (squad 참조 전달)
+            const unit = new Unit(unitId++, this.team, worldX, worldY, stats, this);
             
             // Unit의 각도는 Formation의 heading에 따라 설정 (위쪽을 향함)
             unit.angle = worldHeading;
@@ -77,9 +77,9 @@ class Squad {
     }
 
     // SquadAI와 FormationManager 초기화 (시뮬레이션 시작 시)
-    initializeAI() {
+    initializeAI(battleSimulator = null) {
         if (!this.squadAI && typeof SquadAI !== 'undefined') {
-            this.squadAI = new SquadAI(this);
+            this.squadAI = new SquadAI(this, battleSimulator);
         }
         if (!this.formationManager && typeof FormationManager !== 'undefined') {
             this.formationManager = new FormationManager(this);
@@ -154,9 +154,13 @@ class Squad {
         }
 
         // squad.angle 방향으로 가장 앞에 있는 유닛들의 평균 위치
-        // angle 방향 벡터 계산
-        const dirX = Math.cos(this.angle);
-        const dirY = Math.sin(this.angle);
+        // squad.angle은 Canvas 좌표계를 사용하므로, 수학 좌표계로 변환하여 방향 벡터 계산
+        // Canvas 좌표계: 위쪽 = -Math.PI/2, 오른쪽 = 0
+        // 수학 좌표계: 위쪽 = Math.PI/2, 오른쪽 = 0
+        // 변환: mathAngle = canvasAngle + Math.PI/2
+        const mathAngle = this.angle + Math.PI / 2;
+        const dirX = Math.cos(mathAngle);
+        const dirY = Math.sin(mathAngle);
         
         // 각 유닛의 전방 거리 계산 (angle 방향으로의 투영)
         let maxFrontDist = -Infinity;
@@ -270,6 +274,29 @@ class Squad {
             // Update formation positions continuously
             this.updateFormationPositions();
         }
+    }
+
+    // Get formation position for a specific unit by ID
+    getFormationPos(unitId) {
+        // Find the unit's index in the initialUnitStates array
+        const unitIndex = this.units.findIndex(u => u.id === unitId);
+        if (unitIndex === -1 || !this.initialUnitStates[unitIndex]) {
+            // Fallback: return formation center
+            return { x: this.centerX, y: this.centerY };
+        }
+        
+        const initialState = this.initialUnitStates[unitIndex];
+        const cos = Math.cos(this.angle);
+        const sin = Math.sin(this.angle);
+        
+        // Rotate the relative position by squad angle
+        const rotatedX = initialState.x * cos - initialState.y * sin;
+        const rotatedY = initialState.x * sin + initialState.y * cos;
+        
+        return {
+            x: this.centerX + rotatedX,
+            y: this.centerY + rotatedY
+        };
     }
 
     // Formation shape와 화살표 그리기 (셋업 상태 렌더링용)
@@ -396,7 +423,174 @@ class Squad {
         ctx.closePath();
         ctx.fill();
         
+        // squad.angle 값 표시
+        ctx.save();
+        ctx.fillStyle = "rgba(234, 179, 8, 1.0)";
+        ctx.strokeStyle = "rgba(0, 0, 0, 0.8)";
+        ctx.lineWidth = 2 / cameraZoom;
+        ctx.font = `bold ${14 / cameraZoom}px monospace`;
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        
+        // 각도를 도(degree)로 변환
+        const angleDeg = (this.angle * 180 / Math.PI).toFixed(1);
+        const angleRad = this.angle.toFixed(3);
+        const angleText = `angle: ${angleDeg}° (${angleRad} rad)`;
+        
+        // 텍스트 배경 (가독성 향상)
+        const textMetrics = ctx.measureText(angleText);
+        const textWidth = textMetrics.width;
+        const textHeight = 16 / cameraZoom;
+        const textPadding = 4 / cameraZoom;
+        
+        ctx.fillStyle = "rgba(0, 0, 0, 0.6)";
+        ctx.fillRect(
+            centerX - textWidth / 2 - textPadding,
+            centerY - arrowLength - textHeight - textPadding * 2,
+            textWidth + textPadding * 2,
+            textHeight + textPadding * 2
+        );
+        
+        // 텍스트 그리기
+        ctx.fillStyle = "rgba(234, 179, 8, 1.0)";
+        ctx.fillText(
+            angleText,
+            centerX,
+            centerY - arrowLength - textHeight / 2 - textPadding
+        );
+        
         ctx.restore();
+        
+        ctx.restore();
+    }
+
+    // SquadAI 상태 전환 메서드들
+    startEngaging() {
+        // 교전 돌입 상태로 전환
+        // FormationManager가 있으면 적을 향해 이동 시작
+        if (this.formationManager && this.squadAI && this.squadAI.targetSquad) {
+            const target = this.squadAI.targetSquad.getFrontCenter();
+            this.centerX = target.x;
+            this.centerY = target.y;
+        }
+    }
+
+    startCombat() {
+        // 교전 중 상태로 전환
+        // 유닛들이 자동으로 타겟을 찾아 공격하도록 설정
+        for (const unit of this.units) {
+            if (unit.state !== STATES.DEAD) {
+                // Unit의 타겟팅 로직이 자동으로 작동
+            }
+        }
+    }
+
+    startRetreating() {
+        // 후퇴 상태로 전환
+        // 적으로부터 멀어지도록 이동
+        if (this.squadAI && this.squadAI.targetSquad) {
+            const target = this.squadAI.targetSquad.getFrontCenter();
+            const dx = this.centerX - target.x;
+            const dy = this.centerY - target.y;
+            const dist = Math.hypot(dx, dy);
+            if (dist > 0) {
+                const retreatDist = 200; // 후퇴 거리
+                this.centerX += (dx / dist) * retreatDist;
+                this.centerY += (dy / dist) * retreatDist;
+            }
+        }
+    }
+
+    startMoving() {
+        // 이동 상태로 전환
+        // FormationManager가 있으면 이동 시작
+        if (this.formationManager) {
+            this.formationManager.startTransition();
+        }
+    }
+
+    startDefending() {
+        // 방어 상태로 전환
+        // 유닛들이 방어 모드로 전환
+        for (const unit of this.units) {
+            if (unit.state !== STATES.DEAD) {
+                // Unit의 방어 로직이 자동으로 작동
+            }
+        }
+    }
+
+    setTactic(tactic) {
+        // 전술 설정
+        this.currentTactic = tactic;
+        // 전술에 따라 유닛 행동 조정
+        // (구현 필요 시 추가)
+    }
+
+    // 평균 공격력 계산
+    getAverageAttack() {
+        const aliveUnits = this.units.filter(u => u.state !== STATES.DEAD);
+        if (aliveUnits.length === 0) return 0;
+        const sum = aliveUnits.reduce((acc, u) => acc + u.atk, 0);
+        return sum / aliveUnits.length;
+    }
+
+    // 평균 스테미너 계산 (비율)
+    getAverageStamina() {
+        const aliveUnits = this.units.filter(u => u.state !== STATES.DEAD);
+        if (aliveUnits.length === 0) return 0;
+        const sum = aliveUnits.reduce((acc, u) => acc + (u.stamina / u.maxStamina), 0);
+        return sum / aliveUnits.length;
+    }
+
+    // 평균 이동 속도 계산
+    getAverageMoveSpeed() {
+        const aliveUnits = this.units.filter(u => u.state !== STATES.DEAD);
+        if (aliveUnits.length === 0) return 50; // 기본값
+        const sum = aliveUnits.reduce((acc, u) => acc + u.moveSpeed, 0);
+        return sum / aliveUnits.length;
+    }
+
+    // 최대 사기 계산
+    getMaxMorale() {
+        const aliveUnits = this.units.filter(u => u.state !== STATES.DEAD);
+        if (aliveUnits.length === 0) return 0;
+        return aliveUnits[0].maxMorale; // 모든 유닛이 같은 maxMorale을 가진다고 가정
+    }
+
+    // 사기 피해/회복 적용
+    applyMoraleDamage(amount) {
+        for (const unit of this.units) {
+            if (unit.state !== STATES.DEAD) {
+                unit.morale = Math.max(0, Math.min(unit.maxMorale, unit.morale + amount));
+            }
+        }
+    }
+
+    // 강제 재정비 (돌격 전)
+    rigidReorganize() {
+        if (this.formationManager) {
+            this.formationManager.startTransition();
+            // 즉시 포메이션으로 복귀하도록 강제
+            this.updateFormationPositions();
+        }
+    }
+
+    // 돌격 상태 설정
+    setChargeState(isCharging) {
+        for (const unit of this.units) {
+            if (unit.state !== STATES.DEAD) {
+                unit.isCharging = isCharging;
+            }
+        }
+    }
+
+    // 유닛 타입 반환
+    getUnitType() {
+        const aliveUnits = this.units.filter(u => u.state !== STATES.DEAD);
+        if (aliveUnits.length === 0) return 'infantry';
+        // 첫 번째 유닛의 타입을 반환 (모든 유닛이 같은 타입이라고 가정)
+        // Unit 클래스에 type 속성이 있다고 가정
+        return aliveUnits[0].type || 'infantry';
     }
 }
 

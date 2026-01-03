@@ -173,9 +173,62 @@ class SettingsManager {
             setVal('cfg_knockback_collision_threshold', cfg.knockbackCollisionThreshold);
         }
         
+        // Apply Squad AI settings
+        if (this.settings.squadAI) {
+            const squadAI = this.settings.squadAI;
+            setVal('cfg_leash_distance', squadAI.leashDistance || 300);
+            setVal('cfg_formation_tightness', squadAI.formationTightness || 1.0);
+            setVal('cfg_unit_scan_range', squadAI.unitScanRange || 150);
+            setVal('cfg_combat_stickiness', squadAI.combatStickiness || 1.0);
+            setVal('cfg_ai_decision_interval', squadAI.aiDecisionInterval || 0.2);
+            setVal('cfg_leash_tightness_mult', squadAI.leashTightnessMult || 1.0);
+            setVal('cfg_formation_tightness_mult', squadAI.formationTightnessMult || 1.0);
+            setVal('cfg_combat_tightness_mult', squadAI.combatTightnessMult || 0.7);
+            setVal('cfg_retreat_tightness_mult', squadAI.retreatTightnessMult || 0.8);
+            setVal('cfg_transition_tightness_mult', squadAI.transitionTightnessMult || 0.9);
+        } else {
+            // Default values if not in settings
+            setVal('cfg_leash_distance', 300);
+            setVal('cfg_formation_tightness', 1.0);
+            setVal('cfg_unit_scan_range', 150);
+            setVal('cfg_combat_stickiness', 1.0);
+            setVal('cfg_ai_decision_interval', 0.2);
+            setVal('cfg_leash_tightness_mult', 1.0);
+            setVal('cfg_formation_tightness_mult', 1.0);
+            setVal('cfg_combat_tightness_mult', 0.7);
+            setVal('cfg_retreat_tightness_mult', 0.8);
+            setVal('cfg_transition_tightness_mult', 0.9);
+        }
+        
+        // Initialize global SQUAD_AI_SETTINGS object
+        this.updateSquadAISettings();
+        
         // 슬라이더 값 업데이트
         this.updateSquadSizeSlider('A');
         this.updateSquadSizeSlider('B');
+    }
+    
+    // Update global SQUAD_AI_SETTINGS object from UI
+    updateSquadAISettings() {
+        if (typeof window === 'undefined') return;
+        
+        const getVal = (id, def = 0) => {
+            const elem = document.getElementById(id);
+            return elem ? Number(elem.value) : def;
+        };
+        
+        window.SQUAD_AI_SETTINGS = {
+            leashDistance: getVal('cfg_leash_distance', 300),
+            formationTightness: getVal('cfg_formation_tightness', 1.0),
+            unitScanRange: getVal('cfg_unit_scan_range', 150),
+            combatStickiness: getVal('cfg_combat_stickiness', 1.0),
+            aiDecisionInterval: getVal('cfg_ai_decision_interval', 0.2),
+            leashTightnessMult: getVal('cfg_leash_tightness_mult', 1.0),
+            formationTightnessMult: getVal('cfg_formation_tightness_mult', 1.0),
+            combatTightnessMult: getVal('cfg_combat_tightness_mult', 0.7),
+            retreatTightnessMult: getVal('cfg_retreat_tightness_mult', 0.8),
+            transitionTightnessMult: getVal('cfg_transition_tightness_mult', 0.9)
+        };
     }
 
     saveCurrentSettings() {
@@ -257,6 +310,23 @@ class SettingsManager {
             knockbackDecay: getVal('cfg_knockback_decay', 0.90),
             knockbackCollisionThreshold: getVal('cfg_knockback_collision_threshold', 1.0)
         };
+
+        // Save Squad AI settings
+        this.settings.squadAI = {
+            leashDistance: getVal('cfg_leash_distance', 300),
+            formationTightness: getVal('cfg_formation_tightness', 1.0),
+            unitScanRange: getVal('cfg_unit_scan_range', 150),
+            combatStickiness: getVal('cfg_combat_stickiness', 1.0),
+            aiDecisionInterval: getVal('cfg_ai_decision_interval', 0.2),
+            leashTightnessMult: getVal('cfg_leash_tightness_mult', 1.0),
+            formationTightnessMult: getVal('cfg_formation_tightness_mult', 1.0),
+            combatTightnessMult: getVal('cfg_combat_tightness_mult', 0.7),
+            retreatTightnessMult: getVal('cfg_retreat_tightness_mult', 0.8),
+            transitionTightnessMult: getVal('cfg_transition_tightness_mult', 0.9)
+        };
+        
+        // Update global SQUAD_AI_SETTINGS object
+        this.updateSquadAISettings();
 
         // 현재 선택된 병종의 인원수를 UNIT_PRESETS에 업데이트
         const presetA = getSelectVal('squad1_preset_A');
@@ -504,11 +574,15 @@ class SettingsManager {
             squadA = existingSquadA;
         } else if (existingSquadA) {
             // Formation과 인원수가 같으면 기존 squad 유지
-            // 하지만 각도는 항상 +90도로 고정
-            if (existingSquadA.angle !== Math.PI / 2) {
-                existingSquadA.angle = Math.PI / 2;
-                this.rotateSquad(existingSquadA, Math.PI / 2);
+            // 시뮬레이션이 실행 중이 아닐 때만 각도를 초기화 (셋업 상태에서만)
+            if (!this.sim || !this.sim.running) {
+                // 셋업 상태: 각도는 항상 +90도로 고정
+                if (existingSquadA.angle !== Math.PI / 2) {
+                    existingSquadA.angle = Math.PI / 2;
+                    this.rotateSquad(existingSquadA, Math.PI / 2);
+                }
             }
+            // 시뮬레이션 실행 중이면 각도는 그대로 유지 (AI가 관리)
             squadA = existingSquadA;
          } else {
              // Create new squad (Formation.angle = 0, 항상 위쪽을 향함)
@@ -548,11 +622,15 @@ class SettingsManager {
              squadB = existingSquadB;
         } else if (existingSquadB) {
             // Formation과 인원수가 같으면 기존 squad 유지
-            // 하지만 각도는 항상 -90도로 고정
-            if (existingSquadB.angle !== -Math.PI / 2) {
-                existingSquadB.angle = -Math.PI / 2;
-                this.rotateSquad(existingSquadB, -Math.PI / 2);
+            // 시뮬레이션이 실행 중이 아닐 때만 각도를 초기화 (셋업 상태에서만)
+            if (!this.sim || !this.sim.running) {
+                // 셋업 상태: 각도는 항상 -90도로 고정
+                if (existingSquadB.angle !== -Math.PI / 2) {
+                    existingSquadB.angle = -Math.PI / 2;
+                    this.rotateSquad(existingSquadB, -Math.PI / 2);
+                }
             }
+            // 시뮬레이션 실행 중이면 각도는 그대로 유지 (AI가 관리)
             squadB = existingSquadB;
          } else {
              // Create new squad (Formation.angle = 0, 항상 위쪽을 향함)

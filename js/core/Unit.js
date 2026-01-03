@@ -1,10 +1,11 @@
 // Unit class - Represents a single combat unit
 class Unit {
-    constructor(id, team, x, y, stats) {
+    constructor(id, team, x, y, stats, squad = null) {
         this.id = id;
         this.team = team;
         this.x = x;
         this.y = y;
+        this.squad = squad; // Squad reference for hierarchical AI
         
         this.maxHp = stats.hp;
         this.hp = stats.hp;
@@ -50,6 +51,16 @@ class Unit {
         this.knockbackX = 0;
         this.knockbackY = 0;
         this.knockbackVel = 0;
+        
+        // AI Decision Throttling
+        this.aiTimer = Math.random() * 0.2; // Random stagger to prevent all units calculating on same frame
+        this.aiInterval = 0.2; // Default: 0.2 seconds (will be updated from settings)
+        this.scanRange = 150; // Default: 150px (will be updated from settings)
+        this.combatStickinessTimer = 0; // Timer for combat stickiness after killing target
+        
+        // Charge state
+        this.isCharging = false;
+        this.type = 'infantry'; // 기본값: 보병 (나중에 확장 가능)
     }
 
     addTextEffect(value, color) {
@@ -113,34 +124,35 @@ class Unit {
 
         this.recoverStamina(dt, config);
 
-        let enemy = this.selectTarget(allUnits);
-        this.target = enemy;
-
-        // Formation에서 설정한 targetHeading이 있으면 그것을 사용, 없으면 enemy를 향해 회전
-        if (typeof this.targetHeading !== 'undefined') {
-            // Formation의 heading을 따라감 (부드러운 회전)
-            let angleDiff = this.targetHeading - this.angle;
-            // Normalize angle difference to [-PI, PI]
-            while (angleDiff > Math.PI) angleDiff -= Math.PI * 2;
-            while (angleDiff < -Math.PI) angleDiff += Math.PI * 2;
-            // 부드러운 회전 (선형 보간)
-            const rotationSpeed = 5.0; // rad/s
-            const maxRotation = rotationSpeed * dt;
-            if (Math.abs(angleDiff) > maxRotation) {
-                this.angle += Math.sign(angleDiff) * maxRotation;
-            } else {
-                this.angle = this.targetHeading;
+        // AI Decision Throttling - only run decision logic at intervals
+        this.aiTimer += dt;
+        const shouldRunAI = this.aiTimer >= this.aiInterval;
+        
+        if (shouldRunAI) {
+            this.aiTimer = 0; // Reset timer
+            // Update interval from global settings if available
+            if (window.SQUAD_AI_SETTINGS) {
+                this.aiInterval = window.SQUAD_AI_SETTINGS.aiDecisionInterval || 0.2;
+                this.scanRange = window.SQUAD_AI_SETTINGS.unitScanRange || 150;
             }
-        } else if (enemy && enemy.state !== STATES.DEAD) {
-            // Formation에 속하지 않은 Unit은 enemy를 향해 회전
-            const dx = enemy.x - this.x;
-            const dy = enemy.y - this.y;
-            const targetAngle = Math.atan2(dy, dx);
-            this.angle = targetAngle;
+            
+            // Select target (optimized - only scans local area)
+            let enemy = this.selectTarget(allUnits);
+            this.target = enemy;
+            
+            // Update combat stickiness timer
+            if (this.combatStickinessTimer > 0) {
+                this.combatStickinessTimer -= this.aiInterval;
+                if (this.combatStickinessTimer <= 0) {
+                    this.combatStickinessTimer = 0;
+                }
+            }
         }
         
-        if (!enemy) return;
+        // Priority State Machine: Leashing → Combat → Formation
+        this.executePriorityLogic(dt, allUnits, config);
 
+        // Handle state timers (attack sequences, intervals, etc.)
         if (this.stateTimer > 0) {
             this.stateTimer -= dt;
             
@@ -150,11 +162,12 @@ class Unit {
                 const progress = Math.min(1, elapsed / totalTime);
                 this.offsetX = -3 * Math.sin(progress * Math.PI * 0.5);
                 
-                if (enemy && enemy.state !== STATES.DEAD && this.knockbackVel <= 0) {
-                    const dist = this.distanceTo(enemy);
+                // Approach target during pre-attack if needed
+                if (this.target && this.target.state !== STATES.DEAD && this.knockbackVel <= 0) {
+                    const dist = this.distanceTo(this.target);
                     if (dist > this.range * 0.95) {
-                        const dx = enemy.x - this.x;
-                        const dy = enemy.y - this.y;
+                        const dx = this.target.x - this.x;
+                        const dy = this.target.y - this.y;
                         const moveDist = Math.hypot(dx, dy);
                         if (moveDist > 0) {
                             const approachSpeed = this.moveSpeed * 0.5;
@@ -170,9 +183,15 @@ class Unit {
 
             if (this.stateTimer <= 0) {
                 if (this.state === STATES.INTERVAL || this.state === STATES.DEFENDING) {
-                    this.decideNextAction(enemy, config);
+                    if (this.target && this.target.state !== STATES.DEAD) {
+                        this.decideNextAction(this.target, config);
+                    }
                 } else if (this.state === STATES.PRE_ATTACK) {
-                    this.executeAttack(enemy, config);
+                    if (this.target && this.target.state !== STATES.DEAD) {
+                        this.executeAttack(this.target, config);
+                    } else {
+                        this.state = STATES.IDLE;
+                    }
                 }
             } else {
                 if(this.state === STATES.DEFENDING) {
@@ -186,10 +205,10 @@ class Unit {
                             this.defendingDecisionTimer = intervalTime; // 다음 판단 시간 설정
                             
                             // 상대가 공격 준비 중이 아니고, 자신이 공격할 수 있는 상황이면 판단
-                            if (enemy && enemy.state !== STATES.PRE_ATTACK && 
+                            if (this.target && this.target.state !== STATES.PRE_ATTACK && 
                                 this.stamina >= config.attackCost && 
-                                this.distanceTo(enemy) <= this.range) {
-                                this.decideNextAction(enemy, config);
+                                this.distanceTo(this.target) <= this.range) {
+                                this.decideNextAction(this.target, config);
                             }
                         }
                     } else {
@@ -201,31 +220,13 @@ class Unit {
             }
             return;
         }
-        switch (this.state) {
-            case STATES.RECOVER:
-                this.intent = INTENTS.REST;
-                if (this.stamina >= config.attackCost + 5) this.state = STATES.IDLE;
-                break;
-
-            case STATES.IDLE:
-            case STATES.MOVING:
-                if (this.knockbackVel > 0) {
-                    break;
-                }
-                const dist = this.distanceTo(enemy);
-                if (dist <= this.range) {
-                    if (this.stamina < config.attackCost) {
-                        this.state = STATES.RECOVER;
-                        if (window.sim) window.sim.log(`${this.teamName()}: 지침 (휴식)`, 'log-info');
-                    } else {
-                        this.startAttack(config);
-                    }
-                } else {
-                    this.state = STATES.MOVING;
-                    this.intent = INTENTS.ENGAGE;
-                    this.moveTowards(enemy, dt, config, allUnits);
-                }
-                break;
+        
+        // Handle RECOVER state
+        if (this.state === STATES.RECOVER) {
+            this.intent = INTENTS.REST;
+            if (this.stamina >= config.attackCost + 5) {
+                this.state = STATES.IDLE;
+            }
         }
     }
 
@@ -624,58 +625,237 @@ class Unit {
     }
     
     selectTarget(allUnits) {
-        const enemies = allUnits.filter(u => u.team !== this.team && u.state !== STATES.DEAD);
-        if (enemies.length === 0) return null;
-        
-        const teamUnits = allUnits.filter(u => u.team === this.team && u !== this && u.state !== STATES.DEAD);
-        const alreadyTargeted = new Set(teamUnits.map(u => u.target).filter(t => t !== null));
-        
-        if (this.attacker && enemies.includes(this.attacker)) {
-            return this.attacker;
-        }
-        
-        let targetingMe = enemies.find(e => e.target === this);
-        if (targetingMe) {
-            return targetingMe;
-        }
-        
-        const freeEnemies = enemies.filter(e => !alreadyTargeted.has(e));
-        
-        let nearest = null;
-        let nearestDist = Infinity;
-        for (let e of freeEnemies) {
-            const dist = this.distanceTo(e);
-            if (dist < nearestDist) {
-                nearestDist = dist;
-                nearest = e;
+        // Priority 1: Self-Defense - Check attacker
+        if (this.attacker && this.attacker.team !== this.team && this.attacker.state !== STATES.DEAD) {
+            const dist = this.distanceTo(this.attacker);
+            if (dist <= this.scanRange) {
+                return this.attacker;
             }
         }
         
-        if (!nearest) {
-            for (let e of enemies) {
-                const dist = this.distanceTo(e);
-                if (dist < nearestDist) {
-                    nearestDist = dist;
-                    nearest = e;
+        // Priority 2: Local Threat - Scan only enemies within scanRange
+        const localEnemies = [];
+        for (let u of allUnits) {
+            if (u.team === this.team || u.state === STATES.DEAD) continue;
+            const dist = this.distanceTo(u);
+            if (dist <= this.scanRange) {
+                localEnemies.push({ unit: u, dist: dist });
+            }
+        }
+        
+        if (localEnemies.length > 0) {
+            // Check if someone is targeting me
+            const targetingMe = localEnemies.find(e => e.unit.target === this);
+            if (targetingMe) {
+                return targetingMe.unit;
+            }
+            
+            // Find nearest local enemy
+            localEnemies.sort((a, b) => a.dist - b.dist);
+            return localEnemies[0].unit;
+        }
+        
+        // Priority 3: Squad Target - Use squad's target squad if available
+        if (this.squad && this.squad.squadAI && this.squad.squadAI.targetSquad) {
+            const targetSquad = this.squad.squadAI.targetSquad;
+            const targetUnits = targetSquad.units.filter(u => u.state !== STATES.DEAD);
+            
+            if (targetUnits.length > 0) {
+                // Find closest unit in target squad
+                let nearest = null;
+                let nearestDist = Infinity;
+                for (let u of targetUnits) {
+                    const dist = this.distanceTo(u);
+                    if (dist < nearestDist) {
+                        nearestDist = dist;
+                        nearest = u;
+                    }
                 }
+                return nearest;
             }
         }
         
-        let lowestHp = null;
-        let lowestHpRatio = Infinity;
-        for (let e of freeEnemies) {
-            const hpRatio = e.hp / e.maxHp;
-            if (hpRatio < lowestHpRatio) {
-                lowestHpRatio = hpRatio;
-                lowestHp = e;
+        return null;
+    }
+    
+    // Priority State Machine: Leashing → Combat → Formation
+    executePriorityLogic(dt, allUnits, config) {
+        if (!this.squad) {
+            // Fallback for units without squad (backward compatibility)
+            if (this.target && this.target.state !== STATES.DEAD) {
+                const dist = this.distanceTo(this.target);
+                if (dist <= this.range) {
+                    if (this.stamina < config.attackCost) {
+                        this.state = STATES.RECOVER;
+                    } else {
+                        this.startAttack(config);
+                    }
+                } else {
+                    this.state = STATES.MOVING;
+                    this.intent = INTENTS.ENGAGE;
+                    this.moveTowards(this.target, dt, config, allUnits);
+                }
+                // Update angle
+                const dx = this.target.x - this.x;
+                const dy = this.target.y - this.y;
+                this.angle = Math.atan2(dy, dx);
             }
+            return;
         }
         
-        if (lowestHp && this.distanceTo(lowestHp) < nearestDist * 1.5) {
-            return lowestHp;
+        // Get Squad AI settings
+        const squadAISettings = window.SQUAD_AI_SETTINGS || {};
+        const leashDistance = squadAISettings.leashDistance || 300;
+        const baseFormationTightness = squadAISettings.formationTightness || 1.0;
+        const combatStickiness = squadAISettings.combatStickiness || 1.0;
+        
+        // Get situation-specific multipliers
+        const leashTightnessMult = squadAISettings.leashTightnessMult || 1.0;
+        const formationTightnessMult = squadAISettings.formationTightnessMult || 1.0;
+        const combatTightnessMult = squadAISettings.combatTightnessMult || 0.7;
+        const retreatTightnessMult = squadAISettings.retreatTightnessMult || 0.8;
+        const transitionTightnessMult = squadAISettings.transitionTightnessMult || 0.9;
+        
+        // Check if squad is in transition or retreating
+        const isTransitioning = this.squad.formationManager && this.squad.formationManager.isTransitioning;
+        const isRetreating = this.squad.squadAI && this.squad.squadAI.state === SQUAD_STATES.RETREATING;
+        
+        // Get formation center for leashing check
+        const formationCenter = this.squad.getFormationCenter();
+        const distToFormationCenter = Math.hypot(this.x - formationCenter.x, this.y - formationCenter.y);
+        
+        // Priority 1: Leashing (Force Return)
+        if (distToFormationCenter > leashDistance) {
+            // Force return to formation slot - ignore all enemies
+            this.target = null;
+            const slotPos = this.squad.getFormationPos(this.id);
+            const dx = slotPos.x - this.x;
+            const dy = slotPos.y - this.y;
+            const dist = Math.hypot(dx, dy);
+            
+            if (dist > 5) { // Arrival threshold
+                this.state = STATES.MOVING;
+                this.intent = INTENTS.ENGAGE;
+                // Move towards slot with spring force (apply leash multiplier)
+                const effectiveTightness = baseFormationTightness * leashTightnessMult;
+                const moveSpeed = this.moveSpeed * effectiveTightness;
+                const moveDist = moveSpeed * dt;
+                this.x += (dx / dist) * moveDist;
+                this.y += (dy / dist) * moveDist;
+            } else {
+                this.state = STATES.IDLE;
+            }
+            
+            // Update angle towards slot
+            this.angle = Math.atan2(dy, dx);
+            return;
         }
         
-        return nearest;
+        // Priority 2: Combat (Engage)
+        const hasValidTarget = this.target && this.target.state !== STATES.DEAD;
+        const targetInRange = hasValidTarget && this.distanceTo(this.target) <= this.scanRange;
+        const wasAttacked = this.attacker && this.attacker.state !== STATES.DEAD;
+        const inCombatStickiness = this.combatStickinessTimer > 0;
+        
+        // Check if target was just killed - set stickiness timer
+        if (this.target && this.target.state === STATES.DEAD && this.combatStickinessTimer <= 0) {
+            this.combatStickinessTimer = combatStickiness;
+        }
+        
+        // Enter combat if we have a valid target OR are in combat stickiness period
+        if ((hasValidTarget && (targetInRange || wasAttacked)) || inCombatStickiness) {
+            if (hasValidTarget) {
+                const dist = this.distanceTo(this.target);
+                
+                if (dist <= this.range) {
+                    // In attack range
+                    if (this.stateTimer > 0) {
+                        // Already in attack sequence, continue
+                        return;
+                    }
+                    
+                    if (this.stamina < config.attackCost) {
+                        this.state = STATES.RECOVER;
+                        this.intent = INTENTS.REST;
+                    } else {
+                        this.startAttack(config);
+                    }
+                } else {
+                    // Move towards target
+                    this.state = STATES.MOVING;
+                    this.intent = INTENTS.ENGAGE;
+                    // Apply combat tightness multiplier to movement if maintaining formation during combat
+                    // Note: moveTowards uses moveMult internally, so we apply tightness as a speed modifier
+                    const effectiveTightness = baseFormationTightness * combatTightnessMult;
+                    const originalMoveSpeed = this.moveSpeed;
+                    this.moveSpeed = originalMoveSpeed * effectiveTightness;
+                    this.moveTowards(this.target, dt, config, allUnits);
+                    this.moveSpeed = originalMoveSpeed; // Restore original
+                }
+                
+                // Update angle towards target
+                const dx = this.target.x - this.x;
+                const dy = this.target.y - this.y;
+                this.angle = Math.atan2(dy, dx);
+            } else if (inCombatStickiness) {
+                // In combat stickiness period but no valid target - maintain combat stance briefly
+                // This allows units to look for new targets before returning to formation
+                this.state = STATES.IDLE;
+                this.intent = INTENTS.ENGAGE;
+                // Keep current angle (don't rotate)
+            }
+            
+            return;
+        }
+        
+        // Priority 3: Formation Follow (Default)
+        const slotPos = this.squad.getFormationPos(this.id);
+        const dx = slotPos.x - this.x;
+        const dy = slotPos.y - this.y;
+        const dist = Math.hypot(dx, dy);
+        
+        if (dist > 5) { // Arrival threshold
+            this.state = STATES.MOVING;
+            this.intent = INTENTS.ENGAGE;
+            
+            // Determine effective tightness based on situation
+            let effectiveTightnessMult = formationTightnessMult;
+            if (isRetreating) {
+                effectiveTightnessMult = retreatTightnessMult;
+            } else if (isTransitioning) {
+                effectiveTightnessMult = transitionTightnessMult;
+            }
+            
+            // Move towards slot with deceleration when close (smooth arrival)
+            const arrivalDist = 30; // Start decelerating at this distance
+            const speedMult = dist > arrivalDist ? 1.0 : (dist / arrivalDist);
+            const effectiveTightness = baseFormationTightness * effectiveTightnessMult;
+            const moveSpeed = this.moveSpeed * speedMult * effectiveTightness;
+            const moveDist = moveSpeed * dt;
+            
+            this.x += (dx / dist) * moveDist;
+            this.y += (dy / dist) * moveDist;
+        } else {
+            this.state = STATES.IDLE;
+        }
+        
+        // Update angle - use targetHeading if available, otherwise towards slot
+        if (typeof this.targetHeading !== 'undefined') {
+            // Formation's heading (smooth rotation)
+            let angleDiff = this.targetHeading - this.angle;
+            while (angleDiff > Math.PI) angleDiff -= Math.PI * 2;
+            while (angleDiff < -Math.PI) angleDiff += Math.PI * 2;
+            const rotationSpeed = 5.0; // rad/s
+            const maxRotation = rotationSpeed * dt;
+            if (Math.abs(angleDiff) > maxRotation) {
+                this.angle += Math.sign(angleDiff) * maxRotation;
+            } else {
+                this.angle = this.targetHeading;
+            }
+        } else {
+            // Face towards slot
+            this.angle = Math.atan2(dy, dx);
+        }
     }
 
     draw(ctx) {

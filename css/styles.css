@@ -70,3 +70,37 @@ select {
     display: block;
 }
 
+/* Log Tab Styles */
+.log-tab-btn {
+    flex: 1;
+    padding: 0.4rem 0.6rem;
+    background: transparent;
+    border: none;
+    border-bottom: 2px solid transparent;
+    color: #94a3b8;
+    font-size: 0.75rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.log-tab-btn:hover {
+    color: #cbd5e1;
+    background: rgba(148, 163, 184, 0.1);
+}
+
+.log-tab-btn.active {
+    color: #3b82f6;
+    border-bottom-color: #3b82f6;
+    background: rgba(59, 130, 246, 0.1);
+}
+
+.log-tab-content {
+    display: none;
+}
+
+.log-tab-content.active {
+    display: flex;
+    flex-direction: column;
+}
+

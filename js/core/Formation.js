@@ -179,6 +179,15 @@ class Formation {
         this.generateFormation();
     }
     
+    canCharge() {
+        // 포메이션이 돌격 가능한지 확인
+        // chargeBonus가 있는 포메이션은 돌격 가능
+        if (FORMATION_STATS[this.type]) {
+            return FORMATION_STATS[this.type].chargeBonus > 0;
+        }
+        return false;
+    }
+
     getFormationType(typeString) {
         // 한글 이름을 FORMATION_TYPES로 변환
         for (let key in FORMATION_TYPES) {

@@ -131,13 +131,46 @@
         }
     });
     
+    // Squad AI 설정 실시간 업데이트 이벤트
+    const squadAIIds = ['cfg_leash_distance', 'cfg_formation_tightness', 'cfg_unit_scan_range', 'cfg_combat_stickiness', 'cfg_ai_decision_interval', 'cfg_leash_tightness_mult', 'cfg_formation_tightness_mult', 'cfg_combat_tightness_mult', 'cfg_retreat_tightness_mult', 'cfg_transition_tightness_mult'];
+    squadAIIds.forEach(id => {
+        const elem = document.getElementById(id);
+        if (elem) {
+            elem.addEventListener('input', () => {
+                settingsManager.updateSquadAISettings();
+            });
+            elem.addEventListener('change', () => {
+                settingsManager.updateSquadAISettings();
+            });
+        }
+    });
+    
     document.getElementById('btnRestart').onclick = () => {
         settingsManager.saveCurrentSettings();
         sim.applyStatsAndStart();
     };
     
+    // 로그 탭 전환
+    document.querySelectorAll('.log-tab-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+            const tabName = btn.dataset.tab;
+            
+            // Remove active class from all buttons and tabs
+            document.querySelectorAll('.log-tab-btn').forEach(b => b.classList.remove('active'));
+            document.querySelectorAll('.log-tab-content').forEach(t => t.classList.remove('active'));
+            
+            // Add active class to clicked button and corresponding tab
+            btn.classList.add('active');
+            document.getElementById(`log-tab-${tabName}`).classList.add('active');
+        });
+    });
+    
+    // 로그 클리어 버튼 (두 탭 모두 클리어)
     document.getElementById('btnClearLog').onclick = () => {
-        document.getElementById('logContainer').innerHTML = '';
+        const activeTab = document.querySelector('.log-tab-content.active');
+        if (activeTab) {
+            activeTab.innerHTML = '';
+        }
     };
     
     // Camera UI controls

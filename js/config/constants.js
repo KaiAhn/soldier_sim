@@ -30,11 +30,14 @@ const FORMATION_TRANSITION_SLOWDOWN_REDUCTION = 0.5;
 // Squad AI Constants
 const SQUAD_ROUTING_MORALE_THRESHOLD = 0.1; // 10%
 const SQUAD_REORGANIZE_MORALE_THRESHOLD = 0.3; // 30%
+const SQUAD_REENGAGE_STAMINA_THRESHOLD = 0.5; // 50%
+const SQUAD_REENGAGE_MORALE_THRESHOLD = 0.4; // 40%
 const FORMATION_COLLAPSE_MAX_DIST_MULT = 1.5; // 포메이션 폭의 1.5배까지 허용
 
 // Charge System Constants
 const CHARGE_COOLDOWN_DURATION = 10.0; // seconds
 const CHARGE_DURATION = 3.0; // seconds
+const CHARGE_MORALE_RECOVERY = 0.1; // 10% of max morale
 
 // Convex Hull utility (for formation shape visualization)
 function getConvexHull(points) {
