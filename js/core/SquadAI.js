@@ -164,15 +164,21 @@ class SquadAI {
     
     gatherInformation(allSquads) {
         // Find nearest enemy squad
+        // 전술적 판단: 최전열 중심을 사용 (사거리 체크, 교전 시작)
+        const ourFrontCenter = this.squad.getFrontCenter();
+        
         let nearestEnemy = null;
         let nearestDist = Infinity;
         
         for (let squad of allSquads) {
             if (squad.team === this.squad.team || squad.isDestroyed()) continue;
             
+            // 적의 최전열 중심 사용 (전술적 판단)
+            const enemyFrontCenter = squad.getFrontCenter();
+            
             const dist = Math.hypot(
-                squad.centerX - this.squad.centerX,
-                squad.centerY - this.squad.centerY
+                enemyFrontCenter.x - ourFrontCenter.x,
+                enemyFrontCenter.y - ourFrontCenter.y
             );
             
             if (dist < nearestDist) {
@@ -189,9 +195,14 @@ class SquadAI {
             const enemyCount = this.targetSquad.getAliveCount();
             this.numericalAdvantage = (ourCount - enemyCount) / Math.max(enemyCount, 1);
             
-            // Check if in combat range
+            // Check if in combat range (Edge to Edge 방식)
+            // 중심 간 거리에서 양쪽 부대 반지름을 빼서 실제 Edge to Edge 거리 계산
+            const ourRadius = this.squad.getBoundingRadius();
+            const enemyRadius = this.targetSquad.getBoundingRadius();
+            const edgeToEdgeDist = Math.max(0, nearestDist - ourRadius - enemyRadius);
+            
             const combatRange = this.squad.getCombatRange();
-            this.inCombat = nearestDist <= combatRange;
+            this.inCombat = edgeToEdgeDist <= combatRange;
         } else {
             this.numericalAdvantage = 0;
             this.inCombat = false;

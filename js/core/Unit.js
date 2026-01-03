@@ -27,6 +27,7 @@ class Unit {
         
         this.radius = 16;
         this.angle = 0;
+        this.targetHeading = undefined; // Formation에서 설정할 heading
         
         this.animState = 'IDLE';
         this.animTimer = 0;
@@ -115,7 +116,23 @@ class Unit {
         let enemy = this.selectTarget(allUnits);
         this.target = enemy;
 
-        if (enemy && enemy.state !== STATES.DEAD) {
+        // Formation에서 설정한 targetHeading이 있으면 그것을 사용, 없으면 enemy를 향해 회전
+        if (typeof this.targetHeading !== 'undefined') {
+            // Formation의 heading을 따라감 (부드러운 회전)
+            let angleDiff = this.targetHeading - this.angle;
+            // Normalize angle difference to [-PI, PI]
+            while (angleDiff > Math.PI) angleDiff -= Math.PI * 2;
+            while (angleDiff < -Math.PI) angleDiff += Math.PI * 2;
+            // 부드러운 회전 (선형 보간)
+            const rotationSpeed = 5.0; // rad/s
+            const maxRotation = rotationSpeed * dt;
+            if (Math.abs(angleDiff) > maxRotation) {
+                this.angle += Math.sign(angleDiff) * maxRotation;
+            } else {
+                this.angle = this.targetHeading;
+            }
+        } else if (enemy && enemy.state !== STATES.DEAD) {
+            // Formation에 속하지 않은 Unit은 enemy를 향해 회전
             const dx = enemy.x - this.x;
             const dy = enemy.y - this.y;
             const targetAngle = Math.atan2(dy, dx);

@@ -31,6 +31,41 @@ class FormationManager {
         }
     }
     
+    // 유닛 강함 순위 계산 함수
+    getUnitStrength(unit) {
+        // 1. 잔여 체력이 높은 유닛
+        // 2. 체력이 같을 경우 잔여 스테미너가 높은 유닛
+        // 3. 둘다 같을 경우 아무 상관 없음 (ID로 구분)
+        return {
+            hp: unit.hp || 0,
+            stamina: unit.stamina || 0,
+            id: unit.id || 0
+        };
+    }
+
+    // 유닛을 강함 순으로 정렬 (강한 유닛이 앞으로)
+    sortUnitsByStrength(units) {
+        return units
+            .filter(u => u.state !== STATES.DEAD)
+            .sort((a, b) => {
+                const strengthA = this.getUnitStrength(a);
+                const strengthB = this.getUnitStrength(b);
+                
+                // 1. 체력 비교 (높은 순)
+                if (Math.abs(strengthA.hp - strengthB.hp) > 0.001) {
+                    return strengthB.hp - strengthA.hp;
+                }
+                
+                // 2. 체력이 같으면 스테미너 비교 (높은 순)
+                if (Math.abs(strengthA.stamina - strengthB.stamina) > 0.001) {
+                    return strengthB.stamina - strengthA.stamina;
+                }
+                
+                // 3. 둘다 같으면 ID로 구분 (안정적인 정렬을 위해)
+                return strengthA.id - strengthB.id;
+            });
+    }
+
     // Assign slots efficiently to units (based on formation_simulator.html)
     assignSlotsEfficiently(slots, centerX, centerY, angle) {
         const cos = Math.cos(angle);
@@ -44,11 +79,13 @@ class FormationManager {
             assigned: false
         }));
 
-        // Assign slots to units in order (formation_simulator.html style)
-        // Slots are already sorted by normalizeAndSortSlots (layer -> center -> left-right)
-        // Units are assigned to slots in order
-        this.squad.units.forEach((member, idx) => {
-            if (member.state === STATES.DEAD) return;
+        // 유닛을 강함 순으로 정렬 (강한 유닛이 idealPositions의 앞쪽 슬롯에 배치)
+        // idealPositions는 normalizeAndSortSlots에 의해 정렬됨 (Layer -> Center -> LeftRight)
+        // 따라서 강한 유닛이 중앙, 최전열에 배치됨
+        const sortedUnits = this.sortUnitsByStrength(this.squad.units);
+
+        // 정렬된 유닛을 슬롯에 할당
+        sortedUnits.forEach((member, idx) => {
             if (idx < worldSlots.length) {
                 const slot = worldSlots[idx];
                 member.targetX = slot.x;

@@ -104,6 +104,13 @@ if (window.location.protocol === 'file:') {
                                                     <option value="장사진">장사진</option>
                                                 </select>
                                             </div>
+                                            <div class="flex justify-between items-center">
+                                                <label class="text-sm">인원수</label>
+                                                <div class="flex items-center gap-2 flex-1">
+                                                    <input type="range" id="squad1_size_A" min="1" max="200" value="60" step="1" class="flex-1">
+                                                    <input type="number" id="squad1_size_A_input" min="1" max="200" value="60" step="1" class="w-16 border rounded text-right text-black text-sm">
+                                                </div>
+                                            </div>
                                         </div>
                                     </div>
                                 </div>
@@ -144,8 +151,32 @@ if (window.location.protocol === 'file:') {
                                                     <option value="장사진">장사진</option>
                                                 </select>
                                             </div>
+                                            <div class="flex justify-between items-center">
+                                                <label class="text-sm">인원수</label>
+                                                <div class="flex items-center gap-2 flex-1">
+                                                    <input type="range" id="squad1_size_B" min="1" max="200" value="60" step="1" class="flex-1">
+                                                    <input type="number" id="squad1_size_B_input" min="1" max="200" value="60" step="1" class="w-16 border rounded text-right text-black text-sm">
+                                                </div>
+                                            </div>
                                         </div>
                                     </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- Squad Rotation Controls (임시) - 숨김 처리 (코드 보존) -->
+                        <div class="bg-slate-700/50 p-2 rounded border border-slate-600 mt-2 hidden">
+                            <h3 class="font-bold text-slate-300 text-sm mb-2">Squad 회전 (임시)</h3>
+                            <div class="space-y-2">
+                                <div class="flex justify-between items-center">
+                                    <label class="text-sm">Blue Team 각도 (도)</label>
+                                    <input type="range" id="squadRotation_A" min="0" max="360" value="0" step="1" class="flex-1 mx-2">
+                                    <span id="squadRotation_B_value" class="text-sm w-12 text-right">0°</span>
+                                </div>
+                                <div class="flex justify-between items-center">
+                                    <label class="text-sm">Red Team 각도 (도)</label>
+                                    <input type="range" id="squadRotation_B" min="0" max="360" value="0" step="1" class="flex-1 mx-2">
+                                    <span id="squadRotation_B_value" class="text-sm w-12 text-right">0°</span>
                                 </div>
                             </div>
                         </div>

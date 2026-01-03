@@ -58,10 +58,62 @@
     document.getElementById('speedSelect').onchange = (e) => sim.setSpeed(e.target.value);
     
     // 부대 설정 이벤트
-    document.getElementById('squad1_preset_A').onchange = () => settingsManager.updateUnits();
-    document.getElementById('squad1_preset_B').onchange = () => settingsManager.updateUnits();
+    document.getElementById('squad1_preset_A').onchange = () => {
+        settingsManager.updateSquadSizeSlider('A');
+        settingsManager.updateUnits();
+    };
+    document.getElementById('squad1_preset_B').onchange = () => {
+        settingsManager.updateSquadSizeSlider('B');
+        settingsManager.updateUnits();
+    };
     document.getElementById('squad1_formation_A').onchange = () => settingsManager.updateUnits();
     document.getElementById('squad1_formation_B').onchange = () => settingsManager.updateUnits();
+    
+    // 인원수 슬라이더 및 입력 필드 이벤트
+    const sizeSliderA = document.getElementById('squad1_size_A');
+    const sizeSliderB = document.getElementById('squad1_size_B');
+    const sizeInputA = document.getElementById('squad1_size_A_input');
+    const sizeInputB = document.getElementById('squad1_size_B_input');
+    
+    // 슬라이더와 입력 필드 동기화 및 업데이트 함수
+    const updateSquadSize = (team, value) => {
+        const slider = team === 'A' ? sizeSliderA : sizeSliderB;
+        const input = team === 'A' ? sizeInputA : sizeInputB;
+        
+        if (slider && input) {
+            const numValue = parseInt(value);
+            if (numValue >= 1 && numValue <= 200) {
+                slider.value = numValue;
+                input.value = numValue;
+                settingsManager.updatePresetSquadSize();
+                settingsManager.updateUnits();
+            }
+        }
+    };
+    
+    if (sizeSliderA && sizeInputA) {
+        sizeSliderA.addEventListener('input', (e) => {
+            updateSquadSize('A', e.target.value);
+        });
+        sizeInputA.addEventListener('input', (e) => {
+            updateSquadSize('A', e.target.value);
+        });
+        sizeInputA.addEventListener('change', (e) => {
+            updateSquadSize('A', e.target.value);
+        });
+    }
+    
+    if (sizeSliderB && sizeInputB) {
+        sizeSliderB.addEventListener('input', (e) => {
+            updateSquadSize('B', e.target.value);
+        });
+        sizeInputB.addEventListener('input', (e) => {
+            updateSquadSize('B', e.target.value);
+        });
+        sizeInputB.addEventListener('change', (e) => {
+            updateSquadSize('B', e.target.value);
+        });
+    }
     
     // 유닛 스탯 탭 이벤트
     document.getElementById('preset_select').onchange = (e) => settingsManager.loadPresetStats(e.target.value);

@@ -80,7 +80,12 @@ class Camera {
                 this.y -= dy / this.zoom;
                 lastMouseX = e.clientX;
                 lastMouseY = e.clientY;
-                if (this.sim.render) this.sim.render();
+                // 셋업 상태에서는 SettingsManager.render(), 시뮬레이션 중에는 BattleSimulator.render()
+                if (this.settingsManager && this.settingsManager.render && (!this.sim.running)) {
+                    this.settingsManager.render();
+                } else if (this.sim.render) {
+                    this.sim.render();
+                }
             }
         });
         
@@ -120,7 +125,12 @@ class Camera {
             this.x += worldX - newWorldX;
             this.y += worldY - newWorldY;
             
-            if (this.sim.render) this.sim.render();
+            // 셋업 상태에서는 SettingsManager.render(), 시뮬레이션 중에는 BattleSimulator.render()
+            if (this.settingsManager && this.settingsManager.render && (!this.sim.running)) {
+                this.settingsManager.render();
+            } else if (this.sim.render) {
+                this.sim.render();
+            }
         });
         
         // 키보드로 카메라 이동 (화살표 키)
@@ -132,22 +142,38 @@ class Camera {
                 case 'ArrowUp':
                     e.preventDefault();
                     this.y -= moveSpeed / this.zoom;
-                    if (this.sim.render) this.sim.render();
+                    if (this.settingsManager && this.settingsManager.render && (!this.sim.running)) {
+                        this.settingsManager.render();
+                    } else if (this.sim.render) {
+                        this.sim.render();
+                    }
                     break;
                 case 'ArrowDown':
                     e.preventDefault();
                     this.y += moveSpeed / this.zoom;
-                    if (this.sim.render) this.sim.render();
+                    if (this.settingsManager && this.settingsManager.render && (!this.sim.running)) {
+                        this.settingsManager.render();
+                    } else if (this.sim.render) {
+                        this.sim.render();
+                    }
                     break;
                 case 'ArrowLeft':
                     e.preventDefault();
                     this.x -= moveSpeed / this.zoom;
-                    if (this.sim.render) this.sim.render();
+                    if (this.settingsManager && this.settingsManager.render && (!this.sim.running)) {
+                        this.settingsManager.render();
+                    } else if (this.sim.render) {
+                        this.sim.render();
+                    }
                     break;
                 case 'ArrowRight':
                     e.preventDefault();
                     this.x += moveSpeed / this.zoom;
-                    if (this.sim.render) this.sim.render();
+                    if (this.settingsManager && this.settingsManager.render && (!this.sim.running)) {
+                        this.settingsManager.render();
+                    } else if (this.sim.render) {
+                        this.sim.render();
+                    }
                     break;
             }
         });

@@ -172,6 +172,10 @@ class SettingsManager {
             setVal('cfg_knockback_decay', cfg.knockbackDecay);
             setVal('cfg_knockback_collision_threshold', cfg.knockbackCollisionThreshold);
         }
+        
+        // 슬라이더 값 업데이트
+        this.updateSquadSizeSlider('A');
+        this.updateSquadSizeSlider('B');
     }
 
     saveCurrentSettings() {
@@ -254,6 +258,83 @@ class SettingsManager {
             knockbackCollisionThreshold: getVal('cfg_knockback_collision_threshold', 1.0)
         };
 
+        // 현재 선택된 병종의 인원수를 UNIT_PRESETS에 업데이트
+        const presetA = getSelectVal('squad1_preset_A');
+        const presetB = getSelectVal('squad1_preset_B');
+        const sizeInputA = document.getElementById('squad1_size_A_input');
+        const sizeInputB = document.getElementById('squad1_size_B_input');
+        
+        if (presetA && sizeInputA && this.UNIT_PRESETS[presetA]) {
+            this.UNIT_PRESETS[presetA].squadSize = parseInt(sizeInputA.value) || 60;
+        }
+        if (presetB && sizeInputB && this.UNIT_PRESETS[presetB]) {
+            this.UNIT_PRESETS[presetB].squadSize = parseInt(sizeInputB.value) || 60;
+        }
+        
+        // 병종 설정 탭에서 수정한 스탯을 UNIT_PRESETS에 반영
+        // 부대 설정에서 사용하는 모든 병종의 스탯을 UI에서 읽어와서 반영
+        // 병종 설정 탭의 preset_select를 변경하지 않고, 각 병종의 스탯을 직접 읽어옴
+        // 사용자가 수정한 값이 UI에 남아있어야 하므로, preset_select를 변경하지 않음
+        
+        const presetSelect = document.getElementById('preset_select');
+        const originalPreset = presetSelect ? presetSelect.value : '';
+        
+        // 부대 A의 병종 스탯 업데이트
+        if (presetA && this.UNIT_PRESETS[presetA]) {
+            // 병종 설정 탭에서 해당 병종을 선택하여 UI 필드를 업데이트
+            // 하지만 사용자가 수정한 값이 있다면 그 값을 우선 사용
+            if (presetSelect && presetSelect.value !== presetA) {
+                presetSelect.value = presetA;
+                this.loadPresetStats(presetA);
+            }
+            
+            // UI에서 스탯 읽어서 UNIT_PRESETS에 반영
+            // UI 필드에 값이 있으면 그 값을 사용, 없으면 UNIT_PRESETS의 현재 값 사용
+            this.UNIT_PRESETS[presetA] = {
+                hp: getVal('hp_preset', this.UNIT_PRESETS[presetA].hp),
+                atk: getVal('atk_preset', this.UNIT_PRESETS[presetA].atk),
+                as: getVal('as_preset', this.UNIT_PRESETS[presetA].as),
+                rng: getVal('rng_preset', this.UNIT_PRESETS[presetA].rng),
+                spd: getVal('spd_preset', this.UNIT_PRESETS[presetA].spd),
+                shd: getVal('shd_preset', this.UNIT_PRESETS[presetA].shd),
+                arm: getVal('arm_preset', this.UNIT_PRESETS[presetA].arm),
+                mst: getVal('mst_preset', this.UNIT_PRESETS[presetA].mst),
+                mor: getVal('mor_preset', this.UNIT_PRESETS[presetA].mor),
+                mass: getVal('mass_preset', this.UNIT_PRESETS[presetA].mass || 11),
+                squadSize: sizeInputA ? parseInt(sizeInputA.value) || 60 : (this.UNIT_PRESETS[presetA].squadSize || 60)
+            };
+        }
+        
+        // 부대 B의 병종 스탯 업데이트
+        if (presetB && this.UNIT_PRESETS[presetB]) {
+            // 병종 설정 탭에서 해당 병종을 선택하여 UI 필드를 업데이트
+            if (presetSelect && presetSelect.value !== presetB) {
+                presetSelect.value = presetB;
+                this.loadPresetStats(presetB);
+            }
+            
+            // UI에서 스탯 읽어서 UNIT_PRESETS에 반영
+            this.UNIT_PRESETS[presetB] = {
+                hp: getVal('hp_preset', this.UNIT_PRESETS[presetB].hp),
+                atk: getVal('atk_preset', this.UNIT_PRESETS[presetB].atk),
+                as: getVal('as_preset', this.UNIT_PRESETS[presetB].as),
+                rng: getVal('rng_preset', this.UNIT_PRESETS[presetB].rng),
+                spd: getVal('spd_preset', this.UNIT_PRESETS[presetB].spd),
+                shd: getVal('shd_preset', this.UNIT_PRESETS[presetB].shd),
+                arm: getVal('arm_preset', this.UNIT_PRESETS[presetB].arm),
+                mst: getVal('mst_preset', this.UNIT_PRESETS[presetB].mst),
+                mor: getVal('mor_preset', this.UNIT_PRESETS[presetB].mor),
+                mass: getVal('mass_preset', this.UNIT_PRESETS[presetB].mass || 11),
+                squadSize: sizeInputB ? parseInt(sizeInputB.value) || 60 : (this.UNIT_PRESETS[presetB].squadSize || 60)
+            };
+        }
+        
+        // 원래 선택된 병종 복원
+        if (presetSelect && originalPreset && presetSelect.value !== originalPreset) {
+            presetSelect.value = originalPreset;
+            this.loadPresetStats(originalPreset);
+        }
+        
         // Save unitPresets (병종별 스탯 및 부대 인원수 포함)
         this.settings.unitPresets = JSON.parse(JSON.stringify(this.UNIT_PRESETS)); // Deep copy
         
@@ -317,6 +398,46 @@ class SettingsManager {
         return stats;
     }
 
+    // Helper: Squad 회전 변환 적용 (SettingsManager에서만 수행)
+    rotateSquad(squad, angle) {
+        // Squad의 angle 저장 (시각화/로직용)
+        squad.angle = angle;
+        
+        // Formation.angle은 0으로 유지 (Squad.js는 항상 위쪽을 향함)
+        // 초기 상태에서 새로운 각도로 회전 변환 (절대 각도)
+        const cos = Math.cos(angle);
+        const sin = Math.sin(angle);
+        const centerX = squad.centerX;
+        const centerY = squad.centerY;
+        
+        // 초기 상태가 없으면 현재 상태를 초기 상태로 저장 (하위 호환성)
+        if (!squad.initialUnitStates || squad.initialUnitStates.length === 0) {
+            squad.initialUnitStates = squad.units.map(unit => ({
+                x: unit.x - centerX, // 상대 위치
+                y: unit.y - centerY,
+                angle: 0 // 초기 각도는 0 (Formation.angle = 0 기준)
+            }));
+        }
+        
+        // 모든 Unit의 위치와 각도를 초기 상태에서 새 각도로 회전 변환
+        squad.units.forEach((unit, idx) => {
+            const initialState = squad.initialUnitStates[idx];
+            if (!initialState) return;
+            
+            // 초기 상대 위치에서 회전 변환
+            const rotatedX = initialState.x * cos - initialState.y * sin;
+            const rotatedY = initialState.x * sin + initialState.y * cos;
+            
+            // 절대 위치 설정
+            unit.x = centerX + rotatedX;
+            unit.y = centerY + rotatedY;
+            
+            // 각도 회전 변환 (초기 각도 + 새 각도)
+            unit.angle = (initialState.angle + angle) % (Math.PI * 2);
+            unit.targetHeading = unit.angle;
+        });
+    }
+
     // Create squads and units based on current UI settings
     createSquads() {
         if (!this.sim || !this.sim.canvas) {
@@ -330,9 +451,11 @@ class SettingsManager {
         // Squad 설정 가져오기
         const presetA = document.getElementById('squad1_preset_A')?.value || '';
         const presetB = document.getElementById('squad1_preset_B')?.value || '';
-        // 인원수는 병종의 squadSize에서 가져옴
-        const countA = presetA && this.UNIT_PRESETS[presetA] ? (this.UNIT_PRESETS[presetA].squadSize || 60) : 60;
-        const countB = presetB && this.UNIT_PRESETS[presetB] ? (this.UNIT_PRESETS[presetB].squadSize || 60) : 60;
+        // 인원수는 입력 필드에서 가져오고, 없으면 병종의 squadSize에서 가져옴
+        const sizeInputA = document.getElementById('squad1_size_A_input');
+        const sizeInputB = document.getElementById('squad1_size_B_input');
+        const countA = sizeInputA ? parseInt(sizeInputA.value) : (presetA && this.UNIT_PRESETS[presetA] ? (this.UNIT_PRESETS[presetA].squadSize || 60) : 60);
+        const countB = sizeInputB ? parseInt(sizeInputB.value) : (presetB && this.UNIT_PRESETS[presetB] ? (this.UNIT_PRESETS[presetB].squadSize || 60) : 60);
         const formationA = document.getElementById('squad1_formation_A')?.value || '방진';
         const formationB = document.getElementById('squad1_formation_B')?.value || '방진';
         
@@ -361,24 +484,42 @@ class SettingsManager {
         
         // Team A Squad 생성 또는 업데이트
         let squadA;
-        if (existingSquadA && existingSquadA.formation && 
-            existingSquadA.formation.type !== this.getFormationTypeString(formationA)) {
-            // Formation changed - update existing squad
-            existingSquadA.initializeAI();
-            existingSquadA.changeFormation(formationA);
-            // Update formation positions immediately
-            existingSquadA.updateFormationPositions();
-            squadA = existingSquadA;
-        } else {
-            // Create new squad
-            squadA = new Squad(squadId++, 'A', cx - spawnDist/2, cy, squadPresetA, countA, formationA);
-            unitId = squadA.createUnits(unitId, statsA);
-            squadA.initializeAI();
-            // Initialize formation positions for visualization
-            if (squadA.formationManager) {
-                squadA.updateFormationPositions();
+        const formationChangedA = existingSquadA && existingSquadA.formation && 
+            existingSquadA.formation.type !== this.getFormationTypeString(formationA);
+        const countChangedA = existingSquadA && existingSquadA.unitCount !== countA;
+        
+        if (existingSquadA && (formationChangedA || countChangedA)) {
+            // Formation 또는 인원수 변경 - 셋업 상태에서는 유닛 재생성
+            const currentAngle = existingSquadA.angle;
+            existingSquadA.formation = new Formation(formationA, countA);
+            existingSquadA.unitCount = countA;
+            // 유닛 재생성 (새로운 formation에 맞게)
+            unitId = existingSquadA.createUnits(unitId, statsA);
+            // 기존 각도 복원
+            existingSquadA.angle = currentAngle;
+            // 각도에 맞게 유닛 위치 및 방향 조정
+            if (currentAngle !== 0) {
+                this.rotateSquad(existingSquadA, currentAngle);
             }
-        }
+            squadA = existingSquadA;
+        } else if (existingSquadA) {
+            // Formation과 인원수가 같으면 기존 squad 유지
+            // 하지만 각도는 항상 +90도로 고정
+            if (existingSquadA.angle !== Math.PI / 2) {
+                existingSquadA.angle = Math.PI / 2;
+                this.rotateSquad(existingSquadA, Math.PI / 2);
+            }
+            squadA = existingSquadA;
+         } else {
+             // Create new squad (Formation.angle = 0, 항상 위쪽을 향함)
+             squadA = new Squad(squadId++, 'A', cx - spawnDist/2, cy, squadPresetA, countA, formationA);
+             unitId = squadA.createUnits(unitId, statsA);
+             // 블루팀은 +90도 회전 (시계방향)
+             squadA.angle = Math.PI / 2; // +90도
+             this.rotateSquad(squadA, Math.PI / 2);
+             // 셋업 상태에서는 updateFormationPositions 호출하지 않음 (unit.angle을 변경하지 않도록)
+             // initializeAI도 셋업 상태에서는 호출하지 않음
+         }
         console.log('Squad A created/updated:', { 
             id: squadA.id, 
             team: squadA.team, 
@@ -391,24 +532,38 @@ class SettingsManager {
         
         // Team B Squad 생성 또는 업데이트
         let squadB;
-        if (existingSquadB && existingSquadB.formation && 
-            existingSquadB.formation.type !== this.getFormationTypeString(formationB)) {
-            // Formation changed - update existing squad
-            existingSquadB.initializeAI();
-            existingSquadB.changeFormation(formationB);
-            // Update formation positions immediately
-            existingSquadB.updateFormationPositions();
-            squadB = existingSquadB;
-        } else {
-            // Create new squad
-            squadB = new Squad(squadId++, 'B', cx + spawnDist/2, cy, squadPresetB, countB, formationB);
-            unitId = squadB.createUnits(unitId, statsB);
-            squadB.initializeAI();
-            // Initialize formation positions for visualization
-            if (squadB.formationManager) {
-                squadB.updateFormationPositions();
+        const formationChangedB = existingSquadB && existingSquadB.formation && 
+            existingSquadB.formation.type !== this.getFormationTypeString(formationB);
+        const countChangedB = existingSquadB && existingSquadB.unitCount !== countB;
+        
+         if (existingSquadB && (formationChangedB || countChangedB)) {
+             // Formation 또는 인원수 변경 - 셋업 상태에서는 유닛 재생성
+             existingSquadB.formation = new Formation(formationB, countB);
+             existingSquadB.unitCount = countB;
+             // 유닛 재생성 (새로운 formation에 맞게)
+             unitId = existingSquadB.createUnits(unitId, statsB);
+             // 레드팀은 항상 -90도 회전
+             existingSquadB.angle = -Math.PI / 2; // -90도
+             this.rotateSquad(existingSquadB, -Math.PI / 2);
+             squadB = existingSquadB;
+        } else if (existingSquadB) {
+            // Formation과 인원수가 같으면 기존 squad 유지
+            // 하지만 각도는 항상 -90도로 고정
+            if (existingSquadB.angle !== -Math.PI / 2) {
+                existingSquadB.angle = -Math.PI / 2;
+                this.rotateSquad(existingSquadB, -Math.PI / 2);
             }
-        }
+            squadB = existingSquadB;
+         } else {
+             // Create new squad (Formation.angle = 0, 항상 위쪽을 향함)
+             squadB = new Squad(squadId++, 'B', cx + spawnDist/2, cy, squadPresetB, countB, formationB);
+             unitId = squadB.createUnits(unitId, statsB);
+             // 레드팀은 -90도 회전 (반시계방향)
+             squadB.angle = -Math.PI / 2; // -90도
+             this.rotateSquad(squadB, -Math.PI / 2);
+             // 셋업 상태에서는 updateFormationPositions 호출하지 않음 (unit.angle을 변경하지 않도록)
+             // initializeAI도 셋업 상태에서는 호출하지 않음
+         }
         console.log('Squad B created/updated:', { 
             id: squadB.id, 
             team: squadB.team, 
@@ -446,7 +601,7 @@ class SettingsManager {
     }
 
     // Update squads and units in simulator and render
-    updateUnits() {
+    updateUnits(shouldRender = true) {
         if (!this.sim) {
             console.warn('SettingsManager.updateUnits: sim not available');
             return;
@@ -462,66 +617,135 @@ class SettingsManager {
         
         console.log('Total units created:', this.sim.units.length);
         
-        // 카메라 중앙으로 이동
-        if (this.sim.units.length > 0) {
-            let sumX = 0, sumY = 0;
-            let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
-            for (const unit of this.sim.units) {
-                sumX += unit.x;
-                sumY += unit.y;
-                if (unit.x < minX) minX = unit.x;
-                if (unit.x > maxX) maxX = unit.x;
-                if (unit.y < minY) minY = unit.y;
-                if (unit.y > maxY) maxY = unit.y;
-            }
-            const centerX = sumX / this.sim.units.length;
-            const centerY = sumY / this.sim.units.length;
+        // 카메라 위치는 초기 로드 시에만 설정되고, 이후 업데이트(포메이션 변경 등)에서는 유지됨
+        
+        // 셋업 시 렌더 (SettingsManager가 담당)
+        // shouldRender가 false이면 렌더하지 않음 (초기 로드 시 카메라 설정 후 렌더하기 위해)
+        if (shouldRender && this.sim && this.sim.canvas) {
+            this.render();
+        }
+    }
+
+    // 카메라를 모든 부대가 보이도록 설정 (초기 로드 시에만 사용)
+    setupCameraForAllSquads() {
+        if (!this.camera || !this.sim.squads || this.sim.squads.length === 0) {
+            return;
+        }
+
+        let sumX = 0, sumY = 0;
+        let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
+        
+        // 모든 squad의 formation shape 중심점 및 범위 계산
+        for (const squad of this.sim.squads) {
+            const centerX = squad.centerX;
+            const centerY = squad.centerY;
+            sumX += centerX;
+            sumY += centerY;
             
-            // 카메라를 유닛 중심으로 이동
-            if (this.camera) {
-                this.camera.x = centerX;
-                this.camera.y = centerY;
-                
-                // 적절한 줌 레벨 계산 (유닛들이 모두 보이도록)
-                const unitsWidth = maxX - minX;
-                const unitsHeight = maxY - minY;
-                const canvasWidth = this.sim.canvas.width;
-                const canvasHeight = this.sim.canvas.height;
-                
-                // 여유 공간을 위해 1.5배 여유 추가
-                const padding = 1.5;
-                const zoomX = canvasWidth / (unitsWidth * padding);
-                const zoomY = canvasHeight / (unitsHeight * padding);
-                const optimalZoom = Math.min(zoomX, zoomY, 1.0); // 최대 1.0으로 제한
-                
-                // 줌이 너무 작거나 크면 적절한 값으로 설정
-                if (optimalZoom > 0.01 && optimalZoom <= 1.0) {
-                    this.camera.zoom = optimalZoom;
-                } else if (this.camera.zoom < 0.1 || this.camera.zoom > 1.0) {
-                    // 저장된 줌이 비정상적이면 기본값으로 리셋
-                    this.camera.zoom = 0.5; // 기본 줌 레벨
+            // formation shape의 범위 계산 (idealPositions 기반)
+            if (squad.formation && squad.formation.idealPositions) {
+                for (const pos of squad.formation.idealPositions) {
+                    const angle = squad.angle;
+                    const cos = Math.cos(angle);
+                    const sin = Math.sin(angle);
+                    const worldX = centerX + (pos.x * cos - pos.y * sin);
+                    const worldY = centerY + (pos.x * sin + pos.y * cos);
+                    
+                    if (worldX < minX) minX = worldX;
+                    if (worldX > maxX) maxX = worldX;
+                    if (worldY < minY) minY = worldY;
+                    if (worldY > maxY) maxY = worldY;
                 }
-                
-                console.log('Camera set to:', { 
-                    cameraX: this.camera.x, 
-                    cameraY: this.camera.y, 
-                    cameraZoom: this.camera.zoom,
-                    centerX, 
-                    centerY,
-                    unitsWidth,
-                    unitsHeight,
-                    optimalZoom
-                });
-            } else {
-                console.warn('Camera not initialized yet!');
             }
-        } else {
-            console.warn('No units created!');
         }
         
-        if (this.sim.render) {
-            this.sim.render();
+        const centerX = sumX / this.sim.squads.length;
+        const centerY = sumY / this.sim.squads.length;
+        
+        // 카메라를 formation shape 중심으로 이동
+        this.camera.x = centerX;
+        this.camera.y = centerY;
+        
+        // 적절한 줌 레벨 계산 (formation shape들이 모두 보이도록)
+        const formationsWidth = maxX - minX;
+        const formationsHeight = maxY - minY;
+        const canvasWidth = this.sim.canvas.width;
+        const canvasHeight = this.sim.canvas.height;
+        
+        // 여유 공간을 위해 1.5배 여유 추가
+        const padding = 1.5;
+        const zoomX = canvasWidth / (formationsWidth * padding);
+        const zoomY = canvasHeight / (formationsHeight * padding);
+        const optimalZoom = Math.min(zoomX, zoomY, 1.0); // 최대 1.0으로 제한
+        
+        // 줌이 너무 작거나 크면 적절한 값으로 설정
+        if (optimalZoom > 0.01 && optimalZoom <= 1.0) {
+            this.camera.zoom = optimalZoom;
+        } else if (this.camera.zoom < 0.1 || this.camera.zoom > 1.0) {
+            // 저장된 줌이 비정상적이면 기본값으로 리셋
+            this.camera.zoom = 0.5; // 기본 줌 레벨
         }
+        
+        console.log('Camera set to formation center (initial load):', { 
+            cameraX: this.camera.x, 
+            cameraY: this.camera.y, 
+            cameraZoom: this.camera.zoom,
+            centerX, 
+            centerY,
+            formationsWidth,
+            formationsHeight,
+            optimalZoom
+        });
+    }
+    
+    // 셋업 상태 렌더링 (SettingsManager가 담당)
+    render() {
+        if (!this.sim || !this.sim.canvas) return;
+        
+        const ctx = this.sim.ctx;
+        ctx.clearRect(0, 0, this.sim.canvas.width, this.sim.canvas.height);
+        
+        // 배경 렌더링
+        ctx.save();
+        if (this.camera) {
+            this.renderBackground(ctx, this.camera.x, this.camera.y, this.camera.zoom, this.camera.showGrid);
+        } else {
+            this.renderBackground(ctx, 0, 0, 1.0, false);
+        }
+        ctx.restore();
+        
+        // 카메라 변환 적용
+        ctx.save();
+        if (this.camera) {
+            this.camera.applyTransform(ctx);
+        } else {
+            ctx.translate(this.sim.canvas.width / 2, this.sim.canvas.height / 2);
+        }
+        
+        // Formation shapes 및 Units 렌더링 (셋업 상태)
+        // Units를 먼저 렌더링하고, Formation shapes를 나중에 렌더링하여 shape가 위에 표시되도록 함
+        if (this.sim.squads && this.sim.squads.length > 0) {
+            // 1단계: Units 렌더링 (먼저)
+            this.sim.squads.forEach(squad => {
+                if (squad.units) {
+                    squad.units.forEach(unit => {
+                        if (unit && typeof unit.draw === 'function') {
+                            unit.draw(ctx);
+                        }
+                    });
+                }
+            });
+            
+            // 2단계: Formation shapes 렌더링 (나중에 - 가장 위 레이어)
+            const cameraZoom = this.camera ? this.camera.zoom : 1.0;
+            this.sim.squads.forEach(squad => {
+                if (squad && typeof squad.drawFormationShape === 'function') {
+                    squad.drawFormationShape(ctx, cameraZoom);
+                }
+            });
+        }
+        
+        ctx.restore();
     }
 
     // Main initialization method - called from main.js
@@ -533,6 +757,15 @@ class SettingsManager {
         const loaded = await this.loadFromFile();
         if (loaded) {
             this.applySettings();
+            // 설정이 로드되었지만 병종이 선택되지 않은 경우 기본값 설정
+            const presetA = document.getElementById('squad1_preset_A')?.value || '';
+            const presetB = document.getElementById('squad1_preset_B')?.value || '';
+            if (!presetA) {
+                this.setSquadPreset('A', 1, '징집병');
+            }
+            if (!presetB) {
+                this.setSquadPreset('B', 1, '중보병');
+            }
         } else {
             // Fallback to default values
             this.setSquadPreset('A', 1, '징집병');
@@ -551,7 +784,58 @@ class SettingsManager {
         }
         
         // 5. Create initial units
-        this.updateUnits();
+        this.updateUnits(false); // 초기 로드 시에는 render하지 않음
+        
+        // 6. 초기 로드 시 카메라를 모든 부대가 보이도록 설정
+        this.setupCameraForAllSquads();
+        
+        // 7. 초기 로드 시 렌더링 (카메라 설정 후)
+        if (this.sim && this.sim.canvas) {
+            this.render();
+        }
+        
+        // 8. Setup squad rotation UI (환경설정 불러온 직후)
+        this.setupSquadRotationUI();
+        
+        // 9. 초기 슬라이더 값 설정
+        this.updateSquadSizeSlider('A');
+        this.updateSquadSizeSlider('B');
+    }
+    
+    // Squad 회전 UI 설정 (임시)
+    setupSquadRotationUI() {
+        const sliderA = document.getElementById('squadRotation_A');
+        const sliderB = document.getElementById('squadRotation_B');
+        const valueA = document.getElementById('squadRotation_A_value');
+        const valueB = document.getElementById('squadRotation_B_value');
+        
+        if (!sliderA || !sliderB || !valueA || !valueB) return;
+        
+        // 초기값 표시 (0도 = 0 rad, 최초 로드 시 회전 없음)
+        valueA.textContent = '0°';
+        valueB.textContent = '0°';
+        
+        // 슬라이더 이벤트 핸들러
+        const handleRotation = (team, slider, valueElement) => {
+            const degrees = parseFloat(slider.value);
+            const radians = (degrees * Math.PI) / 180;
+            valueElement.textContent = `${degrees}°`;
+            
+            // Squad 찾기 및 회전
+            if (this.sim && this.sim.squads) {
+                const squad = this.sim.squads.find(s => s.team === team);
+                if (squad) {
+                    this.rotateSquad(squad, radians);
+                    // 렌더링 업데이트 (셋업 상태 렌더링)
+                    this.render();
+                }
+            }
+        };
+        
+        sliderA.addEventListener('input', () => handleRotation('A', sliderA, valueA));
+        sliderB.addEventListener('input', () => handleRotation('B', sliderB, valueB));
+        
+        // 최초 로드 시에는 초기 회전 적용하지 않음 (아무것도 rotate 하지 않음)
     }
 
     // 배경 렌더링 (체스판 패턴 잔디밭)
@@ -717,6 +1001,56 @@ class SettingsManager {
         setVal(`squad${squadIndex}_preset_${team}`, presetName);
         this.saveCurrentSettings();
         this.updateUnits();
+    }
+    
+    // 병종 선택 시 슬라이더 값 업데이트
+    updateSquadSizeSlider(team) {
+        const presetSelect = document.getElementById(`squad1_preset_${team}`);
+        const sizeSlider = document.getElementById(`squad1_size_${team}`);
+        const sizeInput = document.getElementById(`squad1_size_${team}_input`);
+        
+        if (!presetSelect || !sizeSlider || !sizeInput) return;
+        
+        const presetName = presetSelect.value;
+        if (presetName && this.UNIT_PRESETS[presetName]) {
+            const squadSize = this.UNIT_PRESETS[presetName].squadSize || 60;
+            sizeSlider.value = squadSize;
+            sizeInput.value = squadSize;
+        }
+    }
+    
+    // 인원수 변경 시 병종 설정 창의 부대 인원수 값도 업데이트
+    updatePresetSquadSize() {
+        const presetSelectA = document.getElementById('squad1_preset_A');
+        const presetSelectB = document.getElementById('squad1_preset_B');
+        const presetSelect = document.getElementById('preset_select');
+        const presetSizeInput = document.getElementById('squadSize_preset');
+        
+        if (!presetSizeInput) return;
+        
+        // 현재 선택된 병종이 부대 설정의 병종과 일치하는지 확인
+        const currentPreset = presetSelect ? presetSelect.value : '';
+        const squadPresetA = presetSelectA ? presetSelectA.value : '';
+        const squadPresetB = presetSelectB ? presetSelectB.value : '';
+        
+        // 부대 설정에서 선택된 병종의 인원수 가져오기
+        let squadSize = null;
+        if (currentPreset === squadPresetA) {
+            const sizeInputA = document.getElementById('squad1_size_A_input');
+            if (sizeInputA) squadSize = parseInt(sizeInputA.value);
+        } else if (currentPreset === squadPresetB) {
+            const sizeInputB = document.getElementById('squad1_size_B_input');
+            if (sizeInputB) squadSize = parseInt(sizeInputB.value);
+        }
+        
+        // 병종 설정 창의 병종이 부대 설정의 병종과 일치하면 업데이트
+        if (squadSize !== null && (currentPreset === squadPresetA || currentPreset === squadPresetB)) {
+            presetSizeInput.value = squadSize;
+            // UNIT_PRESETS도 업데이트
+            if (currentPreset && this.UNIT_PRESETS[currentPreset]) {
+                this.UNIT_PRESETS[currentPreset].squadSize = squadSize;
+            }
+        }
     }
 }
 

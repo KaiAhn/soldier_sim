@@ -171,7 +171,8 @@ class Formation {
         this.unitCount = unitCount;
         this.spacing = spacing;
         this.angle = 0;  // Formation direction (radians)
-        this.idealPositions = []; // Relative positions
+        this.idealPositions = []; // 최전열 기준 상대 위치 (ANCHOR_MODE='front')
+        this.centeredPositions = []; // 무게 중심 기준 상대 위치
         this.width = 0;
         this.height = 0;
         
@@ -194,26 +195,69 @@ class Formation {
     
     generateFormation() {
         const fmt = FORMATION_GENERATORS[this.type];
+        let rawSlots;
         if (fmt) {
-            const rawSlots = fmt(this.unitCount, this.spacing);
-            this.idealPositions = normalizeAndSortSlots(rawSlots);
+            rawSlots = fmt(this.unitCount, this.spacing);
         } else {
             // Default to square
-            this.idealPositions = normalizeAndSortSlots(
-                createRectanglePositions(this.unitCount, this.spacing, 2, 1)
-            );
+            rawSlots = createRectanglePositions(this.unitCount, this.spacing, 2, 1);
         }
         
-        // Calculate bounding box
-        if (this.idealPositions.length > 0) {
+        // 1. idealPositions 생성 (최전열 기준, ANCHOR_MODE='front')
+        this.idealPositions = normalizeAndSortSlots(JSON.parse(JSON.stringify(rawSlots)));
+        
+        // 2. centeredPositions 생성 (무게 중심 기준)
+        this.centeredPositions = this.calculateCenteredPositions(JSON.parse(JSON.stringify(rawSlots)));
+        
+        // Calculate bounding box (centeredPositions 기준)
+        if (this.centeredPositions.length > 0) {
             let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
-            this.idealPositions.forEach(pos => {
+            this.centeredPositions.forEach(pos => {
                 if(pos.x < minX) minX = pos.x; if(pos.x > maxX) maxX = pos.x;
                 if(pos.y < minY) minY = pos.y; if(pos.y > maxY) maxY = pos.y;
             });
             this.width = maxX - minX;
             this.height = maxY - minY;
         }
+    }
+    
+    // 무게 중심 기준으로 정렬된 positions 계산
+    calculateCenteredPositions(slots) {
+        if (slots.length === 0) return slots;
+        
+        // 1. Bounding box 중심으로 정렬 (무게 중심)
+        let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
+        slots.forEach(s => {
+            if(s.x < minX) minX = s.x; if(s.x > maxX) maxX = s.x;
+            if(s.y < minY) minY = s.y; if(s.y > maxY) maxY = s.y;
+        });
+        
+        const centerX = (minX + maxX) / 2;
+        const centerY = (minY + maxY) / 2;
+        
+        slots.forEach(s => {
+            s.x -= centerX;
+            s.y -= centerY;
+        });
+        
+        // 2. Layer Based Sort (Layer -> Center -> LeftRight)
+        return slots.sort((a, b) => {
+            // Layer 우선 비교 (같은 줄/계층 끼리 묶음)
+            if (a.layer !== undefined && b.layer !== undefined) {
+                if (a.layer !== b.layer) return a.layer - b.layer;
+            } else {
+                // Layer 없으면 Y좌표로 대략적 계층 구분
+                if (Math.abs(a.y - b.y) > 0.1) return a.y - b.y; 
+            }
+            
+            // 같은 Layer 내에서는 중앙(|X|) 우선
+            const absX_a = Math.abs(a.x);
+            const absX_b = Math.abs(b.x);
+            if (Math.abs(absX_a - absX_b) > 0.1) return absX_a - absX_b;
+            
+            // 완전 대칭이면 좌->우
+            return a.x - b.x;
+        });
     }
     
     // Get world position for a slot index
