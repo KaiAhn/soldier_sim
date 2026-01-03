@@ -10,7 +10,8 @@ const UNIT_PRESETS = {
         arm: 1, 
         mst: 60, 
         mor: 40, 
-        mass: 11 
+        mass: 11,
+        squadSize: 60
     }, // 인간 10 + 장비 1
     "경보병": { 
         hp: 30, 
@@ -22,7 +23,8 @@ const UNIT_PRESETS = {
         arm: 2, 
         mst: 65, 
         mor: 60, 
-        mass: 15 
+        mass: 15,
+        squadSize: 60
     }, // 인간 10 + 장비 5
     "중보병": { 
         hp: 35, 
@@ -34,7 +36,8 @@ const UNIT_PRESETS = {
         arm: 5, 
         mst: 75, 
         mor: 80, 
-        mass: 21 
+        mass: 21,
+        squadSize: 60
     }  // 인간 10 + 장비 11
 };
 

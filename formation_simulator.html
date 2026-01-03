@@ -1,0 +1,1072 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>부대 진형 연구소 v2.21 (Hollow Corner Fix)</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <style>
+        body { font-family: 'Noto Sans KR', sans-serif; overflow: hidden; background-color: #0f172a; color: #e2e8f0; }
+        canvas { background-color: #020617; }
+        input[type=range] { accent-color: #6366f1; }
+        .fmt-btn.active { background-color: #4f46e5; border-color: #818cf8; ring-width: 2px; --tw-ring-color: #818cf8; }
+        
+        ::-webkit-scrollbar { width: 6px; }
+        ::-webkit-scrollbar-track { background: #1e293b; }
+        ::-webkit-scrollbar-thumb { background: #475569; border-radius: 3px; }
+    </style>
+</head>
+<body class="h-screen flex flex-col">
+
+    <!-- Header -->
+    <header class="bg-slate-800 border-b border-slate-700 p-3 flex justify-between items-center z-10 shadow-lg h-14">
+        <h1 class="text-lg font-bold text-white flex items-center gap-2">
+            <i class="fa-solid fa-chess-board text-indigo-400"></i> 
+            부대 진형 연구소 v2.21
+        </h1>
+        <div class="flex gap-4 text-xs">
+            <div class="flex items-center gap-2 px-3 py-1 bg-slate-700 rounded-full border border-slate-600">
+                <span class="font-bold text-slate-300">물리:</span>
+                <label class="flex items-center gap-1 cursor-pointer hover:text-white">
+                    <input type="checkbox" id="chk_collision" checked class="accent-indigo-500">
+                    <span>충돌</span>
+                </label>
+                <label class="flex items-center gap-1 cursor-pointer hover:text-white">
+                    <input type="checkbox" id="chk_obstruction" checked class="accent-indigo-500">
+                    <span>회피</span>
+                </label>
+            </div>
+
+            <div class="flex items-center gap-2 px-3 py-1 bg-slate-700 rounded-full border border-slate-600">
+                <span class="font-bold text-slate-300">정렬:</span>
+                <label class="flex items-center gap-1 cursor-pointer hover:text-white">
+                    <input type="radio" name="anchor" value="center" class="accent-indigo-500">
+                    <span>중심</span>
+                </label>
+                <label class="flex items-center gap-1 cursor-pointer hover:text-white">
+                    <input type="radio" name="anchor" value="front" checked class="accent-indigo-500">
+                    <span>전열</span>
+                </label>
+            </div>
+
+            <div class="flex items-center gap-2 px-3 py-1 bg-slate-700 rounded-full border border-slate-600">
+                <span class="font-bold text-slate-300">전투력:</span>
+                <div class="flex items-center gap-1"><span class="w-3 h-3 rounded-full border border-yellow-400" style="background: hsl(220, 100%, 60%)"></span> 1번(강함)</div>
+                <i class="fa-solid fa-arrow-right text-slate-500 text-[10px]"></i>
+                <div class="flex items-center gap-1"><span class="w-3 h-3 rounded-full border border-slate-400" style="background: hsl(220, 10%, 40%)"></span> N번(약함)</div>
+            </div>
+        </div>
+    </header>
+
+    <div class="flex flex-1 overflow-hidden">
+        <!-- Controls (Left Sidebar) -->
+        <div class="w-80 bg-slate-800 border-r border-slate-700 flex flex-col z-10 shadow-xl">
+            
+            <div class="p-4 space-y-5 overflow-y-auto flex-1">
+                <!-- Sliders -->
+                <div class="bg-slate-700/30 p-3 rounded-lg border border-slate-600 space-y-4">
+                    <div class="space-y-1">
+                        <div class="flex justify-between text-xs font-bold text-slate-300">
+                            <label>병사 수 (Count)</label>
+                            <span id="val_count" class="text-indigo-400">60</span>
+                        </div>
+                        <input type="range" id="inp_count" min="10" max="200" value="60" class="w-full h-2 bg-slate-600 rounded-lg appearance-none cursor-pointer">
+                    </div>
+
+                    <div class="space-y-1">
+                        <div class="flex justify-between text-xs font-bold text-slate-300">
+                            <label>간격 (Spacing)</label>
+                            <span id="val_spacing" class="text-indigo-400">50px</span>
+                        </div>
+                        <input type="range" id="inp_spacing" min="30" max="80" value="50" class="w-full h-2 bg-slate-600 rounded-lg appearance-none cursor-pointer">
+                    </div>
+
+                    <div class="space-y-1">
+                        <div class="flex justify-between text-xs font-bold text-slate-300">
+                            <label>부대 회전 (Rotation)</label>
+                            <span id="val_angle" class="text-indigo-400">0°</span>
+                        </div>
+                        <input type="range" id="inp_angle" min="0" max="360" value="0" class="w-full h-2 bg-slate-600 rounded-lg appearance-none cursor-pointer">
+                    </div>
+                </div>
+
+                <!-- Formation Select -->
+                <div class="space-y-2">
+                    <label class="text-xs font-bold text-slate-400 uppercase tracking-wider">기본 진형</label>
+                    <div class="grid grid-cols-2 gap-2">
+                        <button onclick="lab.setFormation('SQUARE')" data-id="SQUARE" class="fmt-btn bg-slate-700 p-2 rounded text-xs text-left border border-transparent hover:bg-slate-600 transition">
+                            <div class="font-bold">🟦 방진</div>
+                            <div class="text-[10px] text-slate-400">2:1 밸런스</div>
+                        </button>
+                        <button onclick="lab.setFormation('DENSE')" data-id="DENSE" class="fmt-btn bg-slate-700 p-2 rounded text-xs text-left border border-transparent hover:bg-slate-600 transition">
+                            <div class="font-bold">🧱 밀집방진</div>
+                            <div class="text-[10px] text-slate-400">1.5:1 모루 특화</div>
+                        </button>
+                        <button onclick="lab.setFormation('LOOSE')" data-id="LOOSE" class="fmt-btn bg-slate-700 p-2 rounded text-xs text-left border border-transparent hover:bg-slate-600 transition">
+                            <div class="font-bold">🌫️ 산개진</div>
+                            <div class="text-[10px] text-slate-400">원거리 회피</div>
+                        </button>
+                        <button onclick="lab.setFormation('HOLLOW')" data-id="HOLLOW" class="fmt-btn bg-slate-700 p-2 rounded text-xs text-left border border-transparent hover:bg-slate-600 transition">
+                            <div class="font-bold">⏹️ 공백방진</div>
+                            <div class="text-[10px] text-slate-400">사면 방어 (겹)</div>
+                        </button>
+                    </div>
+                    
+                    <label class="text-xs font-bold text-slate-400 uppercase tracking-wider mt-2 block">공격형 진형</label>
+                    <div class="grid grid-cols-2 gap-2">
+                        <button onclick="lab.setFormation('FISH')" data-id="FISH" class="fmt-btn bg-slate-700 p-2 rounded text-xs text-left border border-transparent hover:bg-slate-600 transition">
+                            <div class="font-bold text-purple-300">🐟 어린진</div>
+                            <div class="text-[10px] text-slate-400">종심 돌파</div>
+                        </button>
+                        <button onclick="lab.setFormation('WEDGE')" data-id="WEDGE" class="fmt-btn bg-slate-700 p-2 rounded text-xs text-left border border-transparent hover:bg-slate-600 transition">
+                            <div class="font-bold text-yellow-300">🔺 봉시진</div>
+                            <div class="text-[10px] text-slate-400">고속 돌격</div>
+                        </button>
+                    </div>
+
+                    <label class="text-xs font-bold text-slate-400 uppercase tracking-wider mt-2 block">특수 / 포위</label>
+                    <div class="grid grid-cols-2 gap-2">
+                        <button onclick="lab.setFormation('CRANE')" data-id="CRANE" class="fmt-btn bg-slate-700 p-2 rounded text-xs text-left border border-transparent hover:bg-slate-600 transition">
+                            <div class="font-bold text-blue-300">🕊️ 학익진</div>
+                            <div class="text-[10px] text-slate-400">포위 (\___/)</div>
+                        </button>
+                        <button onclick="lab.setFormation('ECHELON')" data-id="ECHELON" class="fmt-btn bg-slate-700 p-2 rounded text-xs text-left border border-transparent hover:bg-slate-600 transition">
+                            <div class="font-bold text-blue-300">🦅 안행진</div>
+                            <div class="text-[10px] text-slate-400">십자포화 (V)</div>
+                        </button>
+                        <button onclick="lab.setFormation('TURTLE')" data-id="TURTLE" class="fmt-btn bg-slate-700 p-2 rounded text-xs text-left border border-transparent hover:bg-slate-600 transition">
+                            <div class="font-bold text-green-300">🐢 귀갑진</div>
+                            <div class="text-[10px] text-slate-400">원거리 무효</div>
+                        </button>
+                        <button onclick="lab.setFormation('PHALANX')" data-id="PHALANX" class="fmt-btn bg-slate-700 p-2 rounded text-xs text-left border border-transparent hover:bg-slate-600 transition">
+                            <div class="font-bold text-green-300">🔱 창벽</div>
+                            <div class="text-[10px] text-slate-400">돌격 반사</div>
+                        </button>
+                        <button onclick="lab.setFormation('COLUMN')" data-id="COLUMN" class="fmt-btn bg-slate-700 p-2 rounded text-xs text-left border border-transparent hover:bg-slate-600 transition col-span-2">
+                            <div class="font-bold text-orange-300">🐍 장사진 (행군)</div>
+                            <div class="text-[10px] text-slate-400">고속 이동</div>
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Stats Panel -->
+            <div class="bg-slate-900 p-3 border-t border-slate-700 text-xs">
+                <h3 class="font-bold text-slate-300 mb-2 border-b border-slate-700 pb-1">📊 현재 진형 효과</h3>
+                <div id="statsDisplay" class="space-y-1 font-mono text-[11px] text-slate-400">
+                    <!-- JS populated -->
+                </div>
+            </div>
+        </div>
+
+        <!-- Canvas Area -->
+        <div class="flex-1 relative flex justify-center items-center overflow-hidden cursor-move">
+            <canvas id="labCanvas" class="w-full h-full"></canvas>
+            
+            <div class="absolute top-4 left-4 pointer-events-none">
+                <div class="bg-black/40 backdrop-blur px-3 py-2 rounded border border-white/10 text-xs text-slate-300 shadow-xl">
+                    <div class="text-indigo-300 font-bold mb-1">🎮 조작법</div>
+                    <div>🖱️ <span class="text-white">드래그:</span> 화면 이동</div>
+                    <div>🎡 <span class="text-white">휠:</span> 줌 (최대 0.1x)</div>
+                </div>
+            </div>
+            
+            <div class="absolute bottom-4 right-4 pointer-events-none">
+                <div id="zoomLevel" class="bg-black/40 backdrop-blur px-2 py-1 rounded border border-white/10 text-[10px] text-slate-400">
+                    Zoom: 100%
+                </div>
+            </div>
+        </div>
+    </div>
+
+<script>
+/**
+ * ==========================================
+ * UTILS & GEOMETRY (Convex Hull)
+ * ==========================================
+ */
+
+function getConvexHull(points) {
+    points.sort((a, b) => a.x === b.x ? a.y - b.y : a.x - b.x);
+    const cross = (o, a, b) => (a.x - o.x) * (b.y - o.y) - (a.y - o.y) * (b.x - o.x);
+    const lower = [];
+    for (let i = 0; i < points.length; i++) {
+        while (lower.length >= 2 && cross(lower[lower.length - 2], lower[lower.length - 1], points[i]) <= 0) lower.pop();
+        lower.push(points[i]);
+    }
+    const upper = [];
+    for (let i = points.length - 1; i >= 0; i--) {
+        while (upper.length >= 2 && cross(upper[upper.length - 2], upper[upper.length - 1], points[i]) <= 0) upper.pop();
+        upper.push(points[i]);
+    }
+    upper.pop(); lower.pop();
+    return lower.concat(upper);
+}
+
+// Anchor Mode State
+let anchorMode = 'front'; 
+
+// [수정] 슬롯 정렬 및 Anchor 보정 로직
+function normalizeAndSortSlots(slots) {
+    if (slots.length === 0) return slots;
+
+    // 1. Center (Bounding Box)
+    let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
+    slots.forEach(s => {
+        if(s.x < minX) minX = s.x; if(s.x > maxX) maxX = s.x;
+        if(s.y < minY) minY = s.y; if(s.y > maxY) maxY = s.y;
+    });
+    
+    const centerX = (minX + maxX) / 2;
+    const centerY = (minY + maxY) / 2;
+    
+    slots.forEach(s => {
+        s.x -= centerX;
+        s.y -= centerY;
+    });
+
+    // 2. Anchor
+    minX = Infinity; maxX = -Infinity; minY = Infinity; maxY = -Infinity;
+    slots.forEach(s => {
+        if(s.x < minX) minX = s.x; if(s.x > maxX) maxX = s.x;
+        if(s.y < minY) minY = s.y; if(s.y > maxY) maxY = s.y;
+    });
+
+    if (anchorMode === 'front') {
+        const offset = -minY;
+        slots.forEach(s => s.y += offset);
+    } 
+
+    // 3. Layer Based Sort (Layer -> Center -> LeftRight)
+    return slots.sort((a, b) => {
+        // [중요] Layer 우선 비교 (같은 줄/계층 끼리 묶음)
+        if (a.layer !== undefined && b.layer !== undefined) {
+            if (a.layer !== b.layer) return a.layer - b.layer;
+        } else {
+            // Layer 없으면 Y좌표로 대략적 계층 구분
+            if (Math.abs(a.y - b.y) > 0.1) return a.y - b.y; 
+        }
+        
+        // 같은 Layer 내에서는 중앙(|X|) 우선
+        const absX_a = Math.abs(a.x);
+        const absX_b = Math.abs(b.x);
+        if (Math.abs(absX_a - absX_b) > 0.1) return absX_a - absX_b;
+        
+        // 완전 대칭이면 좌->우
+        return a.x - b.x;
+    });
+}
+
+// 1. 직사각형 생성기
+function createRectanglePositions(count, spacing, widthRatio, heightRatio) {
+    const slots = [];
+    let rows = Math.round(Math.sqrt(count * (heightRatio / widthRatio)));
+    if (rows < 1) rows = 1;
+    let cols = Math.ceil(count / rows);
+    
+    let allocated = 0;
+    
+    for (let r = 0; r < rows; r++) {
+        let colsInThisRow = cols;
+        if (allocated + colsInThisRow > count) colsInThisRow = count - allocated;
+        if (colsInThisRow <= 0) break;
+
+        const currentW = (colsInThisRow - 1) * spacing;
+        
+        for (let c = 0; c < colsInThisRow; c++) {
+            slots.push({
+                x: (c * spacing) - (currentW / 2),
+                y: (r * spacing),
+                heading: 0,
+                layer: r 
+            });
+            allocated++;
+        }
+    }
+    return slots; 
+}
+
+// 2. 학익진 (\____/)
+function createBucketPositions(count, spacing) {
+    const slots = [];
+    const baseCount = Math.floor(count * 0.4);
+    const wingCount = count - baseCount;
+    const leftWingCount = Math.ceil(wingCount / 2);
+    const rightWingCount = wingCount - leftWingCount;
+    
+    const rows = Math.ceil(count / 20); 
+    const baseCols = Math.ceil(baseCount / rows);
+    let allocatedBase = 0;
+    const wingAngle = Math.PI / 4; 
+
+    const baseWidth = (baseCols - 1) * spacing;
+    
+    // Base (Center)
+    for(let r=0; r<rows; r++) {
+        let cols = baseCols;
+        if(allocatedBase + cols > baseCount) cols = baseCount - allocatedBase;
+        const currentRowWidth = (cols - 1) * spacing;
+        for(let c=0; c<cols; c++) {
+            slots.push({
+                x: (c * spacing) - (currentRowWidth / 2),
+                y: r * spacing,
+                heading: 0,
+                layer: r
+            });
+            allocatedBase++;
+        }
+    }
+    
+    const halfBaseW = baseWidth / 2;
+    
+    // Left Wing
+    let allocatedLeft = 0;
+    for(let r=0; r<rows; r++) {
+        let cols = Math.ceil(leftWingCount / rows);
+        if(allocatedLeft + cols > leftWingCount) cols = leftWingCount - allocatedLeft;
+        for(let c=0; c<cols; c++) {
+            const dist = (c + 1) * spacing;
+            const x = -halfBaseW - (dist * Math.cos(wingAngle));
+            const y = (r * spacing) - (dist * Math.sin(wingAngle));
+            slots.push({x, y, heading: wingAngle, layer: r});
+            allocatedLeft++;
+        }
+    }
+
+    // Right Wing
+    let allocatedRight = 0;
+    for(let r=0; r<rows; r++) {
+        let cols = Math.ceil(rightWingCount / rows);
+        if(allocatedRight + cols > rightWingCount) cols = rightWingCount - allocatedRight;
+        for(let c=0; c<cols; c++) {
+            const dist = (c + 1) * spacing;
+            const x = halfBaseW + (dist * Math.cos(wingAngle));
+            const y = (r * spacing) - (dist * Math.sin(wingAngle));
+            slots.push({x, y, heading: -wingAngle, layer: r});
+            allocatedRight++;
+        }
+    }
+    
+    return slots;
+}
+
+const FORMATIONS = {
+    "SQUARE": {
+        name: "방진 (Square)",
+        spacing: 50,
+        stats: { chargeBonus: 5, defBonus: 0, moveSpeed: 0, chargeResist: 0, flankPen: { def: -10, morale: 20 }, rearPen: { def: -20, morale: 40 } },
+        getSlots: (count, spacing) => normalizeAndSortSlots(createRectanglePositions(count, spacing, 2, 1))
+    },
+    "DENSE": {
+        name: "밀집방진 (Dense)",
+        spacing: 35,
+        stats: { chargeBonus: 0, defBonus: 10, moveSpeed: -30, chargeResist: 20, defRateMult: 1.5, flankPen: { def: -10, morale: 20 }, rearPen: { def: -20, morale: 40 } },
+        getSlots: (count, spacing) => normalizeAndSortSlots(createRectanglePositions(count, spacing * 0.7, 2, 1))
+    },
+    "LOOSE": {
+        name: "산개진 (Loose)",
+        spacing: 70,
+        stats: { chargeBonus: 0, defBonus: -10, moveSpeed: 5, chargeResist: -50, flankPen: { def: -10, morale: 20 }, rearPen: { def: -20, morale: 40 } },
+        getSlots: (count, spacing) => normalizeAndSortSlots(createRectanglePositions(count, spacing * 1.5, 2, 1))
+    },
+    "HOLLOW": {
+        name: "공백방진 (Hollow)",
+        spacing: 50,
+        stats: { chargeBonus: 0, defBonus: 0, moveSpeed: -100, chargeResist: 10, flankPen: { def: 0, morale: 0 }, rearPen: { def: 0, morale: 0 } },
+        getSlots: (count, spacing) => {
+            const slots = [];
+            let remaining = count;
+            let sideUnits = Math.ceil(Math.sqrt(count)) + 2; 
+            if(sideUnits < 4) sideUnits = 4;
+            let currentLayer = 0; 
+
+            while (remaining > 0) {
+                let perimeter = (sideUnits > 1) ? (sideUnits - 1) * 4 : 1;
+                let countToPlace = Math.min(remaining, perimeter);
+                if (sideUnits <= 2) countToPlace = remaining;
+
+                const halfSize = (sideUnits - 1) * spacing * 0.5;
+                
+                // [수정됨: 코너 포함 범위 확장]
+                const layerSlots = [];
+                
+                // 1. Top (전열) - [수정] sideUnits개 (코너 포함)
+                for(let i=0; i<sideUnits; i++) {
+                    const x = -halfSize + i*spacing;
+                    layerSlots.push({x: x, y: -halfSize, heading: 0, type: 'top', layer: currentLayer});
+                }
+                
+                // 2. Sides (측면) - [유지] sideUnits-2개 (코너 제외한 내부)
+                // i=1 to sideUnits-2
+                for(let i=1; i<sideUnits-1; i++) {
+                    const y = -halfSize + i*spacing;
+                    // Left
+                    layerSlots.push({x: -halfSize, y: y, heading: -Math.PI/2, type: 'side', sideY: i, layer: currentLayer});
+                    // Right
+                    layerSlots.push({x: halfSize, y: y, heading: Math.PI/2, type: 'side', sideY: i, layer: currentLayer});
+                }
+                
+                // 3. Bottom (후열) - [수정] sideUnits개 (코너 포함)
+                for(let i=0; i<sideUnits; i++) {
+                    const x = -halfSize + i*spacing;
+                    layerSlots.push({x: x, y: halfSize, heading: Math.PI, type: 'bottom', layer: currentLayer});
+                }
+                
+                if(sideUnits < 2) layerSlots.push({x:0, y:0, heading:0, type:'center', layer: currentLayer});
+
+                // 레이어 내부 우선순위 정렬
+                layerSlots.sort((a, b) => {
+                    // 1. Top 우선
+                    const isTopA = a.type === 'top';
+                    const isTopB = b.type === 'top';
+                    if (isTopA && !isTopB) return -1;
+                    if (!isTopA && isTopB) return 1;
+                    if (isTopA && isTopB) return Math.abs(a.x) - Math.abs(b.x); // Top 중앙 우선
+
+                    // 2. Sides 우선
+                    const isSideA = a.type === 'side';
+                    const isSideB = b.type === 'side';
+                    if (isSideA && !isSideB) return -1;
+                    if (!isSideA && isSideB) return 1;
+                    if (isSideA && isSideB) {
+                        if(Math.abs(a.y - b.y) > 0.1) return a.y - b.y; 
+                        return a.x - b.x;
+                    }
+
+                    // 3. Bottom 나머지
+                    return Math.abs(a.x) - Math.abs(b.x); // Bottom 중앙 우선
+                });
+
+                // 실제 배치
+                const actualPlace = Math.min(countToPlace, layerSlots.length);
+                for(let i=0; i<actualPlace; i++) {
+                    slots.push(layerSlots[i]);
+                }
+
+                remaining -= actualPlace;
+                sideUnits -= 2; 
+                if (sideUnits < 1 && remaining > 0) sideUnits = 1; 
+                currentLayer++;
+            }
+            
+            // Manual Center & Anchor
+            if (slots.length > 0) {
+                let minX=Infinity, maxX=-Infinity, minY=Infinity, maxY=-Infinity;
+                slots.forEach(s => {
+                    if(s.x < minX) minX = s.x; if(s.x > maxX) maxX = s.x;
+                    if(s.y < minY) minY = s.y; if(s.y > maxY) maxY = s.y;
+                });
+                const cx = (minX+maxX)/2;
+                const cy = (minY+maxY)/2;
+                slots.forEach(s => { s.x -= cx; s.y -= cy; });
+
+                if (anchorMode === 'front') {
+                    let newMinY = Infinity;
+                    slots.forEach(s => { if(s.y < newMinY) newMinY = s.y; });
+                    const offset = -newMinY;
+                    slots.forEach(s => s.y += offset);
+                }
+            }
+            return slots; 
+        }
+    },
+    "FISH": {
+        name: "어린진 (Fish Scale)",
+        spacing: 50,
+        stats: { chargeBonus: 10, defBonus: 0, moveSpeed: 0, chargeResist: 0, flankPen: { def: -15, morale: 25 }, rearPen: { def: -30, morale: 50 } },
+        getSlots: (count, spacing) => {
+            const slots = [];
+            let row = 0, used = 0, colsInRow = 1;
+            while (used < count) {
+                let actualCols = Math.min(colsInRow, count - used);
+                const rowWidth = (actualCols - 1) * spacing;
+                const rowY = row * spacing;
+                for (let c = 0; c < actualCols; c++) {
+                    slots.push({ x: (c * spacing) - (rowWidth / 2), y: rowY, heading: 0, layer: row });
+                }
+                used += actualCols;
+                row++;
+                colsInRow += 2;
+            }
+            return normalizeAndSortSlots(slots);
+        }
+    },
+    "WEDGE": {
+        name: "봉시진 (Wedge)",
+        spacing: 50,
+        stats: { chargeBonus: 20, defBonus: 0, moveSpeed: 0, chargeResist: 0, flankPen: { def: -20, morale: 30 }, rearPen: { def: -40, morale: 60 } },
+        getSlots: (count, spacing) => {
+            const slots = [];
+            let row = 0, used = 0, colsInRow = 1;
+            while (used < count) {
+                let actualCols = Math.min(colsInRow, count - used);
+                const rowWidth = (actualCols - 1) * spacing;
+                for (let c = 0; c < actualCols; c++) {
+                    slots.push({ x: (c * spacing) - (rowWidth / 2), y: row * spacing, heading: 0, layer: row }); 
+                }
+                used += actualCols;
+                row++;
+                if (row % 2 === 0) colsInRow++;
+            }
+            return normalizeAndSortSlots(slots);
+        }
+    },
+    "CRANE": {
+        name: "학익진 (Crane Wing)",
+        spacing: 50,
+        stats: { chargeBonus: 0, defBonus: 0, moveSpeed: 0, chargeResist: 0, flankPen: { def: -10, morale: 20 }, rearPen: { def: -20, morale: 40 } },
+        getSlots: (count, spacing) => normalizeAndSortSlots(createBucketPositions(count, spacing))
+    },
+    "ECHELON": {
+        name: "안행진 (Echelon)",
+        spacing: 50,
+        stats: { chargeBonus: 0, defBonus: 0, moveSpeed: 0, chargeResist: 0, flankPen: { def: -10, morale: 20 }, rearPen: { def: -20, morale: 40 } },
+        getSlots: (count, spacing) => {
+            const slots = [];
+            let rows = Math.round(Math.sqrt(count / 5)); 
+            if(rows < 2) rows = 2;
+            let cols = Math.ceil(count / rows);
+            let allocated = 0;
+            const alpha = 0.3; 
+            for(let r=0; r<rows; r++) {
+                let cRow = cols;
+                if(allocated + cRow > count) cRow = count - allocated;
+                const w = (cRow-1)*spacing;
+                for(let c=0; c<cRow; c++) {
+                    const x = (c*spacing) - (w/2);
+                    const y = (r*spacing) - (Math.abs(x) * alpha);
+                    slots.push({x, y, heading: 0, layer: r}); 
+                }
+                allocated += cRow;
+            }
+            return normalizeAndSortSlots(slots);
+        }
+    },
+    "TURTLE": {
+        name: "귀갑진 (Turtle)",
+        spacing: 35,
+        stats: { chargeBonus: 0, defBonus: 10, moveSpeed: -50, chargeResist: 20, rangedResist: 100, flankPen: { def: 0, morale: 0 }, rearPen: { def: -10, morale: 20 } },
+        getSlots: (count, spacing) => normalizeAndSortSlots(createRectanglePositions(count, spacing * 0.7, 2, 1))
+    },
+    "PHALANX": {
+        name: "창벽 (Phalanx)",
+        spacing: 40,
+        stats: { chargeBonus: 0, defBonus: 10, moveSpeed: -100, chargeResist: 50, flankPen: { def: -15, morale: 30 }, rearPen: { def: -40, morale: 80 } },
+        getSlots: (count, spacing) => {
+            let rows = 3;
+            let cols = Math.ceil(count / rows);
+            if (count < 6) { rows = Math.ceil(count/2); cols = 2; }
+            const slots = [];
+            let allocated = 0;
+            const totalH = (rows - 1) * spacing;
+            for (let r = 0; r < rows; r++) {
+                let remaining = count - allocated;
+                let rowsLeft = rows - r;
+                let colsThisRow = Math.ceil(remaining / rowsLeft);
+                const currentW = (colsThisRow - 1) * spacing;
+                for (let c = 0; c < colsThisRow; c++) {
+                    slots.push({ x: (c * spacing) - (currentW / 2), y: (r * spacing) - (totalH / 2), heading: 0, layer: r }); 
+                    allocated++;
+                }
+            }
+            return normalizeAndSortSlots(slots);
+        }
+    },
+    "COLUMN": {
+        name: "장사진 (Column)",
+        spacing: 50,
+        stats: { chargeBonus: 0, defBonus: -20, moveSpeed: 20, chargeResist: -100, flankPen: { def: -10, morale: 20 }, rearPen: { def: -20, morale: 40 } },
+        getSlots: (count, spacing) => normalizeAndSortSlots(createRectanglePositions(count, spacing, 1, 4))
+    }
+};
+
+/**
+ * ==========================================
+ * UNITS & SQUAD
+ * ==========================================
+ */
+class Unit {
+    constructor(id) {
+        this.id = id; 
+        this.strength = 100 - (id - 1); 
+        if (this.strength < 10) this.strength = 10;
+        
+        this.currentX = 0; this.currentY = 0;
+        this.targetX = 0; this.targetY = 0;
+        this.targetHeading = 0; this.currentHeading = 0;
+        
+        this.radius = 16;
+        this.shieldScale = 0.9;
+        this.moveSpeed = 150 + (Math.random() * 20);
+        this.team = 'A'; 
+        
+        // [추가] 부대 참조 (Squad가 나중에 할당됨)
+        this.squad = null;
+    }
+    
+    // [PHYSICS] 1. 앞사람 피하기 (Avoidance)
+    checkMovementObstruction(units) {
+        const el = document.getElementById('chk_obstruction');
+        if (!el || !el.checked) return { slowed: false };
+
+        const detectionRange = this.radius * 2.5; 
+        const fov = Math.PI / 2; 
+        
+        let nearestDist = Infinity;
+        let obstruction = null;
+
+        for (const other of units) {
+            if (other === this) continue;
+
+            const dx = other.currentX - this.currentX;
+            const dy = other.currentY - this.currentY;
+            const dist = Math.hypot(dx, dy);
+
+            if (dist < detectionRange) {
+                const angleToOther = Math.atan2(dy, dx);
+                let angleDiff = angleToOther - this.targetHeading; 
+                
+                while (angleDiff <= -Math.PI) angleDiff += Math.PI*2;
+                while (angleDiff > Math.PI) angleDiff -= Math.PI*2;
+
+                if (Math.abs(angleDiff) < fov / 2) {
+                    if (dist < nearestDist) {
+                        nearestDist = dist;
+                        obstruction = other;
+                    }
+                }
+            }
+        }
+
+        if (obstruction) {
+            let slowFactor = Math.max(0.2, (nearestDist - this.radius) / (detectionRange - this.radius));
+            
+            // [예외 3: 감속 완화] 진형 변경 중이면 감속 페널티 50% 완화
+            if (this.squad && this.squad.isTransitioning) {
+                const deceleration = 1.0 - slowFactor;
+                slowFactor = 1.0 - (deceleration * 0.5);
+            }
+            
+            return { slowed: true, factor: slowFactor };
+        }
+        
+        return { slowed: false, factor: 1.0 };
+    }
+
+    update(dt, units) {
+        const dx = this.targetX - this.currentX;
+        const dy = this.targetY - this.currentY;
+        const distToTarget = Math.hypot(dx, dy);
+        
+        const obs = this.checkMovementObstruction(units);
+        let speed = this.moveSpeed;
+        
+        // [예외 1: 속도 증가] 진형 변경 중이면 1.5배
+        if (this.squad && this.squad.isTransitioning) {
+            speed *= 1.5;
+        }
+
+        if (obs.slowed) speed *= obs.factor;
+
+        if (distToTarget < 1) {
+            this.currentX = this.targetX;
+            this.currentY = this.targetY;
+        } else {
+            const moveStep = speed * dt;
+            if (moveStep >= distToTarget) {
+                this.currentX = this.targetX;
+                this.currentY = this.targetY;
+            } else {
+                this.currentX += (dx / distToTarget) * moveStep;
+                this.currentY += (dy / distToTarget) * moveStep;
+            }
+        }
+        
+        let angleDiff = this.targetHeading - this.currentHeading;
+        while (angleDiff <= -Math.PI) angleDiff += Math.PI*2;
+        while (angleDiff > Math.PI) angleDiff -= Math.PI*2;
+        this.currentHeading += angleDiff * 5 * dt;
+        this.shieldScale = 0.9 + Math.sin(Date.now() / 500) * 0.05;
+    }
+
+    draw(ctx) {
+        ctx.save();
+        ctx.translate(this.currentX, this.currentY);
+        ctx.rotate(this.currentHeading);
+        
+        const strengthRatio = Math.max(0, 100 - (this.id - 1)) / 100;
+        const s = Math.round(strengthRatio * 100);
+        const l = 30 + (strengthRatio * 30);
+        
+        const mainColor = `hsl(220, ${s}%, ${l}%)`;
+        const highlightColor = `hsl(220, ${s}%, ${Math.min(100, l+30)}%)`;
+
+        ctx.shadowColor = "rgba(0, 0, 0, 0.5)"; ctx.shadowBlur = 4;
+        ctx.beginPath(); ctx.arc(0, 0, this.radius, 0, Math.PI * 2);
+        const gradient = ctx.createRadialGradient(-5, -5, 2, 0, 0, this.radius);
+        gradient.addColorStop(0, highlightColor); gradient.addColorStop(1, mainColor);
+        ctx.fillStyle = gradient; ctx.fill();
+        ctx.strokeStyle = `hsl(220, ${s}%, ${l-10}%)`; ctx.lineWidth = 1.5; ctx.stroke();
+        ctx.shadowColor = "transparent";
+
+        const shieldS = this.shieldScale;
+        const shieldR = this.radius + 4;
+        ctx.beginPath();
+        ctx.arc(0, 0, shieldR * shieldS, -Math.PI/4 - Math.PI/2, Math.PI/4 - Math.PI/2);
+        
+        if (this.id <= 12) ctx.strokeStyle = "#fbbf24"; 
+        else ctx.strokeStyle = `hsl(215, ${s*0.3}%, ${l+20}%)`; 
+        
+        ctx.lineWidth = 3; ctx.lineCap = "round"; ctx.stroke();
+        
+        ctx.rotate(-this.currentHeading); 
+        ctx.fillStyle = "white";
+        ctx.font = "bold 10px sans-serif";
+        ctx.textAlign = "center";
+        ctx.textBaseline = "middle";
+        ctx.shadowColor = "black"; ctx.shadowBlur = 3;
+        ctx.fillText(this.id, 0, 0);
+        ctx.shadowColor = "transparent";
+
+        ctx.restore();
+    }
+}
+
+class Squad {
+    constructor(x, y) {
+        this.x = x; this.y = y;
+        this.angle = 0; this.count = 60;
+        this.type = 'SQUARE';
+        this.members = [];
+        this.slots = [];
+        this.spacing = 50;
+        
+        // [추가] 진형 변경 상태 관리
+        this.isTransitioning = false;
+        this.transitionTimer = 0;
+        
+        this.ensureMembers();
+    }
+    
+    ensureMembers() {
+        if (this.members.length < this.count) {
+            for (let i = this.members.length; i < this.count; i++) {
+                const u = new Unit(i + 1);
+                u.squad = this; // Squad 참조 할당
+                u.currentX = this.x + (Math.random()-0.5)*100; 
+                u.currentY = this.y + (Math.random()-0.5)*100;
+                this.members.push(u);
+            }
+        } else if (this.members.length > this.count) {
+            this.members.splice(this.count);
+        }
+        
+        this.members.forEach((u, idx) => {
+            u.id = idx + 1;
+            u.strength = 100 - idx;
+            u.squad = this; // 안전장치
+        });
+    }
+
+    startTransition() {
+        this.isTransitioning = true;
+        this.transitionTimer = 3.0; // 3초간 예외 적용 (시뮬레이션용)
+        
+        // UI 표시 업데이트
+        const indicator = document.getElementById('statusIndicator');
+        if(indicator) {
+            indicator.innerText = "진형 변경 중 (Transition)";
+            indicator.className = "px-3 py-1 rounded-full border border-orange-500 bg-orange-900/50 text-orange-300 font-bold transition-colors duration-300 animate-pulse";
+        }
+    }
+
+    assignSlotsEfficiently(slots, cx, cy, rad) {
+        const cos = Math.cos(rad);
+        const sin = Math.sin(rad);
+        const worldSlots = slots.map(slot => ({
+            x: cx + (slot.x * cos - slot.y * sin),
+            y: cy + (slot.x * sin + slot.y * cos),
+            heading: rad + slot.heading,
+            assigned: false
+        }));
+
+        this.members.forEach((member, idx) => {
+            if (idx < worldSlots.length) {
+                const slot = worldSlots[idx];
+                member.targetX = slot.x;
+                member.targetY = slot.y;
+                member.targetHeading = slot.heading;
+            }
+        });
+        
+        this.slots = worldSlots; 
+    }
+
+    // [PHYSICS] 2. 충돌 해결 (Collision Resolution)
+    resolveCollisions() {
+        const el = document.getElementById('chk_collision');
+        if (!el || !el.checked) return;
+
+        const pushStrength = 0.2; 
+        const iterations = 2; 
+
+        for (let iter = 0; iter < iterations; iter++) {
+            for (let i = 0; i < this.members.length; i++) {
+                const u1 = this.members[i];
+                for (let j = i + 1; j < this.members.length; j++) {
+                    const u2 = this.members[j];
+                    
+                    const dx = u2.currentX - u1.currentX;
+                    const dy = u2.currentY - u1.currentY;
+                    const distSq = dx*dx + dy*dy;
+                    let radiusSum = u1.radius + u2.radius; 
+                    
+                    // [예외 2: 통과 면적 축소] 진형 변경 중이면 아군 판정 거리 50% 축소
+                    // 기본 아군: 0.85배 (약간 겹침 허용)
+                    let passThroughRatio = 0.85;
+                    if (this.isTransitioning) {
+                        passThroughRatio *= 0.5; // 절반으로 줄어듬 -> 서로 훨씬 더 겹칠 수 있음
+                    }
+                    
+                    const minDetails = radiusSum * passThroughRatio; 
+
+                    if (distSq < minDetails * minDetails && distSq > 0.001) {
+                        const dist = Math.sqrt(distSq);
+                        const overlap = minDetails - dist;
+                        
+                        const nx = dx / dist;
+                        const ny = dy / dist;
+                        
+                        const pushX = nx * overlap * pushStrength;
+                        const pushY = ny * overlap * pushStrength;
+                        
+                        u1.currentX -= pushX;
+                        u1.currentY -= pushY;
+                        u2.currentX += pushX;
+                        u2.currentY += pushY;
+                    }
+                }
+            }
+        }
+    }
+
+    update(dt) {
+        // Transition Timer Logic
+        if (this.isTransitioning) {
+            this.transitionTimer -= dt;
+            if (this.transitionTimer <= 0) {
+                this.isTransitioning = false;
+                // UI 복귀
+                const indicator = document.getElementById('statusIndicator');
+                if(indicator) {
+                    indicator.innerText = "대기 중 (Idle)";
+                    indicator.className = "px-3 py-1 rounded-full border border-slate-600 bg-slate-800 text-slate-400 font-bold transition-colors duration-300";
+                }
+            }
+        }
+
+        this.ensureMembers();
+        const fmt = FORMATIONS[this.type];
+        const rawSlots = fmt.getSlots(this.count, this.spacing);
+        this.assignSlotsEfficiently(rawSlots, this.x, this.y, this.angle * (Math.PI / 180));
+        
+        this.members.forEach(u => u.update(dt, this.members));
+        this.resolveCollisions();
+        
+        this.updateStatsUI(fmt);
+    }
+    
+    drawOccupiedZone(ctx) {
+        if(this.slots.length < 3) return; 
+
+        const points = this.slots.map(s => ({ x: s.x, y: s.y }));
+        const hull = getConvexHull(points);
+        
+        if (hull.length === 0) return;
+
+        ctx.save();
+        
+        // Transition 중에는 노란 영역도 다르게 표시 (예: 주황색 점선)
+        ctx.fillStyle = this.isTransitioning ? "rgba(249, 115, 22, 0.1)" : "rgba(234, 179, 8, 0.15)"; 
+        ctx.strokeStyle = this.isTransitioning ? "rgba(249, 115, 22, 0.5)" : "rgba(234, 179, 8, 0.4)";
+        ctx.lineWidth = 2;
+        ctx.setLineDash([5, 5]);
+        
+        ctx.beginPath();
+        ctx.moveTo(hull[0].x, hull[0].y);
+        for (let i = 1; i < hull.length; i++) {
+            ctx.lineTo(hull[i].x, hull[i].y);
+        }
+        ctx.closePath();
+        
+        ctx.fill(); 
+        ctx.stroke();
+        ctx.restore();
+    }
+
+    updateStatsUI(fmt) {
+        const div = document.getElementById('statsDisplay');
+        const s = fmt.stats;
+        let html = `<div class="flex justify-between items-center mb-1">
+            <span class="font-bold text-indigo-300">${fmt.name}</span>
+            ${this.isTransitioning ? '<span class="text-[10px] text-orange-400 animate-pulse">⚡이동 버프 적용중</span>' : ''}
+        </div>`;
+        
+        if (this.count <= 5) {
+            html += `<div class="text-red-400">⚠️ 병력 부족 (${this.count}명): 효과 무효</div>`;
+        } else {
+            const buff = (val) => val > 0 ? `text-green-400` : (val < 0 ? `text-red-400` : `text-slate-500`);
+            html += `<div class="grid grid-cols-2 gap-x-4 gap-y-1">`;
+            html += `<div>돌격 보너스: <span class="${buff(s.chargeBonus)}">${s.chargeBonus > 0 ? '+' : ''}${s.chargeBonus}%</span></div>`;
+            html += `<div>근접 방어: <span class="${buff(s.defBonus)}">${s.defBonus > 0 ? '+' : ''}${s.defBonus}%</span></div>`;
+            html += `<div>돌격 저항: <span class="${buff(s.chargeResist)}">${s.chargeResist > 0 ? '+' : ''}${s.chargeResist}%</span></div>`;
+            html += `<div>이동 속도: <span class="${buff(s.moveSpeed)}">${s.moveSpeed > 0 ? '+' : ''}${s.moveSpeed}%</span></div>`;
+            if (s.rangedResist) html += `<div class="text-green-300">원거리 무효</div>`;
+            if (s.defRateMult) html += `<div class="text-blue-300">방어선택 x${s.defRateMult}</div>`;
+            html += `</div>`;
+            html += `<div class="mt-2 text-[10px] text-slate-500 border-t border-slate-700 pt-1">
+                <div>측면: 방어 ${s.flankPen.def}%, 사기피해 +${s.flankPen.morale}%</div>
+                <div>후면: 방어 ${s.rearPen.def}%, 사기피해 +${s.rearPen.morale}%</div>
+            </div>`;
+        }
+        div.innerHTML = html;
+    }
+
+    draw(ctx) {
+        this.drawOccupiedZone(ctx);
+        
+        ctx.save();
+        ctx.translate(this.x, this.y);
+        ctx.rotate(this.angle * Math.PI / 180);
+        ctx.rotate(-Math.PI/2);
+        const arrowLen = 60;
+        ctx.beginPath(); ctx.moveTo(0, 0); ctx.lineTo(arrowLen, 0);
+        ctx.strokeStyle = "#ef4444"; ctx.lineWidth = 3; ctx.stroke();
+        ctx.beginPath(); ctx.moveTo(65, 0); ctx.lineTo(52, -6); ctx.lineTo(52, 6);
+        ctx.fillStyle = "#ef4444"; ctx.fill();
+        ctx.restore();
+        
+        this.members.forEach(u => u.draw(ctx));
+    }
+}
+
+// ==========================================
+// MAIN & INPUT
+// ==========================================
+const canvas = document.getElementById('labCanvas');
+const ctx = canvas.getContext('2d');
+const camera = { x: 0, y: 0, zoom: 1.0, isDragging: false, lastX: 0, lastY: 0 };
+let squad = null;
+let lastTime = 0;
+
+function resize() {
+    canvas.width = canvas.parentElement.clientWidth;
+    canvas.height = canvas.parentElement.clientHeight;
+    if (!squad) {
+        squad = new Squad(0, 0); 
+        camera.x = canvas.width / 2;
+        camera.y = canvas.height / 2;
+    }
+}
+
+canvas.addEventListener('mousedown', (e) => {
+    camera.isDragging = true;
+    camera.lastX = e.clientX;
+    camera.lastY = e.clientY;
+});
+window.addEventListener('mousemove', (e) => {
+    if (camera.isDragging) {
+        camera.x += e.clientX - camera.lastX;
+        camera.y += e.clientY - camera.lastY;
+        camera.lastX = e.clientX;
+        camera.lastY = e.clientY;
+    }
+});
+window.addEventListener('mouseup', () => camera.isDragging = false);
+canvas.addEventListener('wheel', (e) => {
+    e.preventDefault();
+    const zoomSpeed = 0.1;
+    if (e.deltaY < 0) camera.zoom = Math.min(camera.zoom + zoomSpeed, 3.0);
+    else camera.zoom = Math.max(camera.zoom - zoomSpeed, 0.1);
+    document.getElementById('zoomLevel').innerText = `Zoom: ${Math.round(camera.zoom * 100)}%`;
+});
+
+// Radio Button Event Listener for Anchor
+document.querySelectorAll('input[name="anchor"]').forEach(radio => {
+    radio.addEventListener('change', (e) => {
+        anchorMode = e.target.value;
+    });
+});
+
+const lab = {
+    setFormation: (type) => {
+        squad.type = type;
+        squad.startTransition(); // 진형 변경 시 transition 상태 발동
+        
+        document.querySelectorAll('.fmt-btn').forEach(btn => {
+            btn.classList.remove('active');
+            if(btn.dataset.id === type) btn.classList.add('active');
+        });
+    },
+    updateValues: () => {
+        const count = Number(document.getElementById('inp_count').value);
+        const angle = Number(document.getElementById('inp_angle').value);
+        const spacing = Number(document.getElementById('inp_spacing').value);
+        
+        document.getElementById('val_count').innerText = count;
+        document.getElementById('val_angle').innerText = angle + '°';
+        document.getElementById('val_spacing').innerText = spacing + 'px';
+        
+        squad.count = count;
+        squad.angle = angle;
+        squad.spacing = spacing;
+    }
+};
+
+['inp_count', 'inp_angle', 'inp_spacing'].forEach(id => document.getElementById(id).addEventListener('input', lab.updateValues));
+
+function loop(timestamp) {
+    const dt = (timestamp - lastTime) / 1000 || 0.016;
+    lastTime = timestamp;
+    
+    ctx.fillStyle = "#020617";
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    
+    ctx.save();
+    ctx.translate(camera.x, camera.y);
+    ctx.scale(camera.zoom, camera.zoom);
+    
+    const gridSize = 100;
+    const gridRange = 4000;
+    ctx.strokeStyle = "#1e293b"; ctx.lineWidth = 1;
+    ctx.beginPath();
+    for(let i=-gridRange; i<=gridRange; i+=gridSize) {
+        ctx.moveTo(i, -gridRange); ctx.lineTo(i, gridRange);
+        ctx.moveTo(-gridRange, i); ctx.lineTo(gridRange, i);
+    }
+    ctx.stroke();
+
+    ctx.strokeStyle = "#334155"; ctx.lineWidth = 2;
+    ctx.beginPath(); ctx.moveTo(-50, 0); ctx.lineTo(50, 0); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(0, -50); ctx.lineTo(0, 50); ctx.stroke();
+
+    if(squad) {
+        squad.update(dt);
+        squad.draw(ctx);
+    }
+    
+    ctx.restore();
+    requestAnimationFrame(loop);
+}
+
+window.addEventListener('resize', resize);
+resize();
+lab.updateValues();
+lab.setFormation('SQUARE'); 
+requestAnimationFrame(loop);
+window.lab = lab;
+</script>
+</body>
+</html>
+

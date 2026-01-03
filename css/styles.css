@@ -37,32 +37,36 @@ select {
     color: #1e293b; 
 }
 
-.config-tab-btn {
-    padding: 6px 12px;
-    background-color: #475569;
-    color: #cbd5e1;
+/* Main Tab Styles */
+.main-tab-btn, .sub-tab-btn {
+    flex: 1;
+    padding: 0.5rem 0.75rem;
+    background: transparent;
     border: none;
-    border-radius: 4px 4px 0 0;
+    border-bottom: 2px solid transparent;
+    color: #94a3b8;
+    font-size: 0.875rem;
+    font-weight: 500;
     cursor: pointer;
-    font-size: 0.75rem;
-    font-weight: 600;
     transition: all 0.2s;
 }
 
-.config-tab-btn:hover {
-    background-color: #64748b;
+.main-tab-btn:hover, .sub-tab-btn:hover {
+    color: #cbd5e1;
+    background: rgba(148, 163, 184, 0.1);
 }
 
-.config-tab-btn.active {
-    background-color: #334155;
-    color: #f1f5f9;
+.main-tab-btn.active, .sub-tab-btn.active {
+    color: #3b82f6;
+    border-bottom-color: #3b82f6;
+    background: rgba(59, 130, 246, 0.1);
 }
 
-.config-tab-content {
+.main-tab-content, .sub-tab-content {
     display: none;
 }
 
-.config-tab-content.active {
+.main-tab-content.active, .sub-tab-content.active {
     display: block;
 }
 

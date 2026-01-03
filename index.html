@@ -3,18 +3,42 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>?좊떅 援먯쟾 ?쒕??덉씠??v0.0.2</title>
+    <title>고대 전투 시뮬레이터</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <link rel="stylesheet" href="css/styles.css">
 </head>
 <body class="bg-slate-900 h-screen flex flex-col text-slate-200">
+<script>
+// Check if running via file:// protocol
+if (window.location.protocol === 'file:') {
+    document.body.innerHTML = `
+        <div style="display: flex; justify-content: center; align-items: center; height: 100vh; background: #1e293b; color: #e2e8f0; font-family: sans-serif;">
+            <div style="text-align: center; padding: 2rem;">
+                <h1 style="color: #ef4444; margin-bottom: 1rem;">⚠️ 로컬 서버가 필요합니다</h1>
+                <p style="margin-bottom: 1rem;">이 애플리케이션은 file:// 프로토콜에서 작동하지 않습니다.</p>
+                <p style="margin-bottom: 2rem;">F5 키를 눌러 디버그 실행하면 로컬 서버가 자동으로 시작됩니다.</p>
+                <p style="color: #94a3b8; font-size: 0.9rem;">또는 수동으로 start-server-node.bat을 실행하세요.</p>
+            </div>
+        </div>
+    `;
+    throw new Error('file:// protocol not supported');
+}
+</script>
 
     <!-- Header & Controls -->
     <header class="bg-slate-800 shadow p-2 flex justify-between items-center z-10 h-12 border-b border-slate-700">
         <h1 class="text-base font-bold text-white ml-2"><i class="fa-solid fa-swords"></i> 유닛 교전 시뮬레이터 v1.7</h1>
         <div class="flex gap-2 items-center">
             <span class="text-xs text-slate-400 mr-2">Space: 일시정지</span>
+            <label class="text-xs text-slate-400 mr-2 flex items-center gap-1">
+                <input type="checkbox" id="toggleIntents" class="w-3 h-3">
+                <span>말풍선</span>
+            </label>
+            <label class="text-xs text-slate-400 mr-2 flex items-center gap-1">
+                <input type="checkbox" id="toggleGrid" class="w-3 h-3">
+                <span>그리드</span>
+            </label>
             <button id="btnPause" class="px-3 py-0.5 bg-yellow-600 text-white rounded text-sm hover:bg-yellow-500 font-bold transition">일시정지</button>
             <button id="btnReset" class="px-3 py-0.5 bg-slate-600 text-white rounded text-sm hover:bg-slate-500 transition">리셋</button>
             <select id="speedSelect" class="border rounded px-2 py-0.5 text-sm bg-white text-black">
@@ -34,56 +58,131 @@
         <!-- Left: Settings Panel -->
         <div class="w-[480px] bg-slate-800 border-r border-slate-700 overflow-y-auto flex flex-col shadow-lg z-10">
             <div class="p-3 space-y-4">
-                
-                <!-- Unit Settings -->
-                <div class="grid grid-cols-2 gap-2">
-                    <!-- Blue Team -->
-                    <div class="bg-slate-700/50 p-2 rounded border border-blue-900">
-                        <div class="flex justify-between items-center mb-1">
-                            <h3 class="font-bold text-blue-400 text-xs">Blue Team</h3>
-                            <select id="preset_A" class="text-[10px] border rounded w-20 text-black">
-                                <option value="">선택...</option>
-                            </select>
-                        </div>
-                        <div class="space-y-1">
-                            <div class="flex justify-between"><label>인원수</label><input type="number" id="count_A" value="3" min="1" max="10" class="w-16 border rounded text-right text-black"></div>
-                            <div class="flex justify-between"><label>체력</label><input type="number" id="hp_A" class="w-16 border rounded text-right text-black"></div>
-                            <div class="flex justify-between"><label>공격력</label><input type="number" id="atk_A" class="w-16 border rounded text-right text-black"></div>
-                            <div class="flex justify-between"><label>공속</label><input type="number" id="as_A" step="0.1" class="w-16 border rounded text-right text-black"></div>
-                            <div class="flex justify-between"><label>사거리</label><input type="number" id="rng_A" step="0.1" class="w-16 border rounded text-right text-black"></div>
-                            <div class="flex justify-between"><label>방패</label><input type="number" id="shd_A" class="w-16 border rounded text-right text-black"></div>
-                            <div class="flex justify-between"><label>갑옷</label><input type="number" id="arm_A" class="w-16 border rounded text-right text-black"></div>
-                            <div class="flex justify-between"><label>사기</label><input type="number" id="mor_A" class="w-16 border rounded text-right text-black"></div>
-                            <div class="flex justify-between"><label>스테미너</label><input type="number" id="mst_A" class="w-16 border rounded text-right text-black"></div>
-                            <div class="flex justify-between"><label>이동속도</label><input type="number" id="spd_A" class="w-16 border rounded text-right text-black"></div>
-                            <div class="flex justify-between"><label>질량</label><input type="number" id="mass_A" class="w-16 border rounded text-right text-black"></div>
+                <!-- 좌상단: 부대 설정 & 병종 설정 탭 -->
+                <div class="bg-slate-700/50 p-2 rounded border border-slate-600">
+                    <!-- Tab Buttons -->
+                    <div class="flex gap-1 border-b border-slate-600">
+                        <button class="main-tab-btn active" data-tab="squad">부대설정</button>
+                        <button class="main-tab-btn" data-tab="preset">병종설정</button>
+                    </div>
+                    
+                    <!-- Tab Content: 부대 설정 -->
+                    <div id="main-tab-squad" class="main-tab-content active">
+                        <div class="grid grid-cols-2 gap-2 mt-2">
+                            <!-- Blue Team -->
+                            <div class="bg-slate-700/50 p-2 rounded border border-blue-900">
+                                <h3 class="font-bold text-blue-400 text-sm mb-2">Blue Team</h3>
+                                <div class="space-y-2">
+                                    <div class="flex justify-between items-center">
+                                        <label class="text-sm">부대 수</label>
+                                        <input type="number" id="squadCount_A" value="1" min="1" max="5" class="w-16 border rounded text-right text-black text-sm" disabled>
+                                    </div>
+                                    <div class="border-t border-blue-800 pt-2">
+                                        <div class="flex justify-between items-center mb-1">
+                                            <label class="text-sm">부대 1</label>
+                                        </div>
+                                        <div class="space-y-1">
+                                            <div class="flex justify-between items-center">
+                                                <label class="text-sm">병종</label>
+                                                <select id="squad1_preset_A" class="text-xs border rounded w-20 text-black">
+                                                    <option value="">선택...</option>
+                                                </select>
+                                            </div>
+                                            <div class="flex justify-between items-center">
+                                                <label class="text-sm">포메이션</label>
+                                                <select id="squad1_formation_A" class="text-xs border rounded w-20 text-black">
+                                                    <option value="방진" selected>방진</option>
+                                                    <option value="밀집방진">밀집방진</option>
+                                                    <option value="산개진">산개진</option>
+                                                    <option value="공백방진">공백방진</option>
+                                                    <option value="어린진">어린진</option>
+                                                    <option value="봉시진">봉시진</option>
+                                                    <option value="학익진">학익진</option>
+                                                    <option value="안행진">안행진</option>
+                                                    <option value="귀갑진">귀갑진</option>
+                                                    <option value="창벽">창벽</option>
+                                                    <option value="장사진">장사진</option>
+                                                </select>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Red Team -->
+                            <div class="bg-slate-700/50 p-2 rounded border border-red-900">
+                                <h3 class="font-bold text-red-400 text-sm mb-2">Red Team</h3>
+                                <div class="space-y-2">
+                                    <div class="flex justify-between items-center">
+                                        <label class="text-sm">부대 수</label>
+                                        <input type="number" id="squadCount_B" value="1" min="1" max="5" class="w-16 border rounded text-right text-black text-sm" disabled>
+                                    </div>
+                                    <div class="border-t border-red-800 pt-2">
+                                        <div class="flex justify-between items-center mb-1">
+                                            <label class="text-sm">부대 1</label>
+                                        </div>
+                                        <div class="space-y-1">
+                                            <div class="flex justify-between items-center">
+                                                <label class="text-sm">병종</label>
+                                                <select id="squad1_preset_B" class="text-xs border rounded w-20 text-black">
+                                                    <option value="">선택...</option>
+                                                </select>
+                                            </div>
+                                            <div class="flex justify-between items-center">
+                                                <label class="text-sm">포메이션</label>
+                                                <select id="squad1_formation_B" class="text-xs border rounded w-20 text-black">
+                                                    <option value="방진" selected>방진</option>
+                                                    <option value="밀집방진">밀집방진</option>
+                                                    <option value="산개진">산개진</option>
+                                                    <option value="공백방진">공백방진</option>
+                                                    <option value="어린진">어린진</option>
+                                                    <option value="봉시진">봉시진</option>
+                                                    <option value="학익진">학익진</option>
+                                                    <option value="안행진">안행진</option>
+                                                    <option value="귀갑진">귀갑진</option>
+                                                    <option value="창벽">창벽</option>
+                                                    <option value="장사진">장사진</option>
+                                                </select>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
                         </div>
                     </div>
-
-                    <!-- Red Team -->
-                    <div class="bg-slate-700/50 p-2 rounded border border-red-900">
-                        <div class="flex justify-between items-center mb-1">
-                            <h3 class="font-bold text-red-400 text-xs">Red Team</h3>
-                            <select id="preset_B" class="text-[10px] border rounded w-20 text-black">
-                                <option value="">선택...</option>
-                            </select>
-                        </div>
-                        <div class="space-y-1">
-                            <div class="flex justify-between"><label>인원수</label><input type="number" id="count_B" value="3" min="1" max="10" class="w-16 border rounded text-right text-black"></div>
-                            <div class="flex justify-between"><label>체력</label><input type="number" id="hp_B" class="w-16 border rounded text-right text-black"></div>
-                            <div class="flex justify-between"><label>공격력</label><input type="number" id="atk_B" class="w-16 border rounded text-right text-black"></div>
-                            <div class="flex justify-between"><label>공속</label><input type="number" id="as_B" step="0.1" class="w-16 border rounded text-right text-black"></div>
-                            <div class="flex justify-between"><label>사거리</label><input type="number" id="rng_B" step="0.1" class="w-16 border rounded text-right text-black"></div>
-                            <div class="flex justify-between"><label>방패</label><input type="number" id="shd_B" class="w-16 border rounded text-right text-black"></div>
-                            <div class="flex justify-between"><label>갑옷</label><input type="number" id="arm_B" class="w-16 border rounded text-right text-black"></div>
-                            <div class="flex justify-between"><label>사기</label><input type="number" id="mor_B" class="w-16 border rounded text-right text-black"></div>
-                            <div class="flex justify-between"><label>스테미너</label><input type="number" id="mst_B" class="w-16 border rounded text-right text-black"></div>
-                            <div class="flex justify-between"><label>이동속도</label><input type="number" id="spd_B" class="w-16 border rounded text-right text-black"></div>
-                            <div class="flex justify-between"><label>질량</label><input type="number" id="mass_B" class="w-16 border rounded text-right text-black"></div>
+                    
+                    <!-- Tab Content: 병종 설정 -->
+                    <div id="main-tab-preset" class="main-tab-content">
+                        <div class="space-y-3 mt-2">
+                            <!-- 병종 선택 -->
+                            <div class="flex justify-between items-center">
+                                <label class="text-sm font-bold">병종 선택</label>
+                                <select id="preset_select" class="text-xs border rounded w-32 text-black">
+                                    <option value="">선택...</option>
+                                </select>
+                            </div>
+                            
+                            <!-- 병종별 스탯 -->
+                            <div class="bg-slate-700/50 p-2 rounded border border-slate-600">
+                                <div class="space-y-1">
+                                    <div class="flex justify-between"><label class="text-sm">체력</label><input type="number" id="hp_preset" class="w-16 border rounded text-right text-black text-sm"></div>
+                                    <div class="flex justify-between"><label class="text-sm">공격력</label><input type="number" id="atk_preset" class="w-16 border rounded text-right text-black text-sm"></div>
+                                    <div class="flex justify-between"><label class="text-sm">공속</label><input type="number" id="as_preset" step="0.1" class="w-16 border rounded text-right text-black text-sm"></div>
+                                    <div class="flex justify-between"><label class="text-sm">사거리</label><input type="number" id="rng_preset" step="0.1" class="w-16 border rounded text-right text-black text-sm"></div>
+                                    <div class="flex justify-between"><label class="text-sm">방패</label><input type="number" id="shd_preset" class="w-16 border rounded text-right text-black text-sm"></div>
+                                    <div class="flex justify-between"><label class="text-sm">갑옷</label><input type="number" id="arm_preset" class="w-16 border rounded text-right text-black text-sm"></div>
+                                    <div class="flex justify-between"><label class="text-sm">사기</label><input type="number" id="mor_preset" class="w-16 border rounded text-right text-black text-sm"></div>
+                                    <div class="flex justify-between"><label class="text-sm">스테미너</label><input type="number" id="mst_preset" class="w-16 border rounded text-right text-black text-sm"></div>
+                                    <div class="flex justify-between"><label class="text-sm">이동속도</label><input type="number" id="spd_preset" class="w-16 border rounded text-right text-black text-sm"></div>
+                                    <div class="flex justify-between"><label class="text-sm">질량</label><input type="number" id="mass_preset" class="w-16 border rounded text-right text-black text-sm"></div>
+                                    <div class="flex justify-between"><label class="text-sm">부대 인원수</label><input type="number" id="squadSize_preset" class="w-16 border rounded text-right text-black text-sm"></div>
+                                </div>
+                            </div>
                         </div>
                     </div>
                 </div>
 
+                <!-- 버튼 영역 -->
                 <div class="grid grid-cols-2 gap-2">
                     <button id="btnApply" class="bg-indigo-600 text-white py-1.5 rounded shadow hover:bg-indigo-500 font-bold text-xs transition">
                         <i class="fa-solid fa-play"></i> 적용 및 시작
@@ -92,78 +191,82 @@
                         <i class="fa-solid fa-download"></i> 설정 저장
                     </button>
                 </div>
-
-                <!-- Global Config with Tabs -->
+                
+                <!-- 좌하단: 부대 AI & 전투 밸런스 탭 -->
                 <div class="bg-slate-700/50 p-2 rounded border border-slate-600">
                     <!-- Tab Buttons -->
-                    <div class="flex gap-1 mb-2 border-b border-slate-600">
-                        <button class="config-tab-btn active" data-tab="combat">유닛 전투 밸런스</button>
-                        <button class="config-tab-btn" data-tab="formation">부대 AI</button>
-                    </div>
-                    
-                    <!-- Tab Content: 유닛 전투 밸런스 -->
-                    <div id="tab-combat" class="config-tab-content active space-y-3">
-                        <h3 class="font-bold text-slate-300 text-xs border-b border-slate-600 pb-1">⚙️ 행동 결정 (AI)</h3>
-                        <div class="grid grid-cols-2 gap-x-4 gap-y-1">
-                            <div class="flex justify-between items-center" title="AI가 공격을 선택할 최대 확률 (0~1)"><label>최대 공격확률</label><input type="number" id="cfg_atk_prob_max" value="1.0" step="0.1" class="w-16 border text-right text-black"></div>
-                            <div class="flex justify-between items-center" title="AI가 공격을 선택할 최소 확률 (0~1)"><label>최소 공격확률</label><input type="number" id="cfg_atk_prob_min" value="0.3" step="0.1" class="w-16 border text-right text-black"></div>
-                            <div class="flex justify-between items-center col-span-2" title="사기가 이 값 이하일 때 최소 확률 적용"><label>사기 임계값(낮을 때 최소확률)</label><input type="number" id="cfg_morale_threshold" value="0.2" step="0.1" class="w-16 border text-right text-black"></div>
-                        </div>
-
-                        <h3 class="font-bold text-slate-300 text-xs border-b border-slate-600 pb-1">⚙️ 공격력</h3>
-                        <div class="grid grid-cols-2 gap-x-4 gap-y-1">
-                            <div class="flex justify-between items-center" title="0에 가까울수록 영향없음"><label class="text-indigo-300 font-bold">사기 영향력(0~1)</label><input type="number" id="cfg_morale_inf" value="0.4" step="0.1" class="w-16 border text-right text-black bg-indigo-50"></div>
-                            <div class="flex justify-between items-center" title="0에 가까울수록 영향없음"><label class="text-indigo-300 font-bold">스테미너 영향력</label><input type="number" id="cfg_stamina_inf" value="0.3" step="0.1" class="w-16 border text-right text-black bg-indigo-50"></div>
-                        </div>
-
-                        <h3 class="font-bold text-slate-300 text-xs border-b border-slate-600 pb-1">⚙️ 회피</h3>
-                        <div class="grid grid-cols-2 gap-x-4 gap-y-1">
-                            <div class="flex justify-between items-center" title="기본 회피 성공 확률 (0~1)"><label>기본 회피율</label><input type="number" id="cfg_base_evade" value="0.1" step="0.05" class="w-16 border text-right text-black"></div>
-                            <div class="flex justify-between items-center" title="회피를 선택할 때 기본 회피율에 적용되는 보정 배율"><label>회피 선택 보정(x)</label><input type="number" id="cfg_evade_bonus" value="2.0" step="0.1" class="w-16 border text-right text-black"></div>
-                            <div class="flex justify-between items-center" title="방패 보유시 회피율에 적용되는 페널티 배율"><label>방패 회피 페널티</label><input type="number" id="cfg_shield_pen" value="0.5" step="0.1" class="w-16 border text-right text-black"></div>
-                            <div class="flex justify-between items-center" title="갑옷 보유시 회피율에 적용되는 페널티 배율"><label>갑옷 회피 페널티</label><input type="number" id="cfg_armor_pen" value="0.5" step="0.1" class="w-16 border text-right text-black"></div>
-                        </div>
-
-                        <h3 class="font-bold text-slate-300 text-xs border-b border-slate-600 pb-1">⚙️ 방어 & 피해 감소</h3>
-                        <div class="grid grid-cols-2 gap-x-4 gap-y-1">
-                            <div class="flex justify-between items-center" title="방어를 선택할 때 방어력에 적용되는 보정 배율"><label>방어 선택 보정(x)</label><input type="number" id="cfg_def_bonus" value="1.5" step="0.1" class="w-16 border text-right text-black"></div>
-                            <div class="flex justify-between items-center" title="방패 기본 배율 (방패 값에 적용되는 배율)"><label>방패 기본 배율</label><input type="number" id="cfg_shield_base_mult" value="1.5" step="0.1" class="w-16 border text-right text-black"></div>
-                            <div class="flex justify-between items-center" title="갑옷 기본 배율 (갑옷 값에 적용되는 배율)"><label>갑옷 기본 배율</label><input type="number" id="cfg_armor_base_mult" value="1.0" step="0.1" class="w-16 border text-right text-black"></div>
-                            <div class="flex justify-between items-center" title="방어태세 보너스 (방어태세일 때 추가 방어력 배율)"><label>방어태세 보너스(x)</label><input type="number" id="cfg_defending_bonus" value="1.3" step="0.1" class="w-16 border text-right text-black"></div>
-                            <div class="flex justify-between items-center" title="방어 지속 시간 (방어태세가 유지되는 시간, 초)"><label>방어 지속 시간(초)</label><input type="number" id="cfg_defending_duration" value="2.0" step="0.1" class="w-16 border text-right text-black"></div>
-                            <div class="flex justify-between items-center" title="전체 피해 감소 보정 (모든 피해에 적용되는 배율)"><label>전체 피해 감소(x)</label><input type="number" id="cfg_damage_reduction" value="0.5" step="0.1" class="w-16 border text-right text-black"></div>
-                        </div>
-
-                        <h3 class="font-bold text-slate-300 text-xs border-b border-slate-600 pb-1">⚙️ 인터벌 & 비용</h3>
-                        <div class="grid grid-cols-2 gap-x-4 gap-y-1">
-                            <div class="flex justify-between items-center" title="공격 전 딜레이 시간 (초)"><label>공격 전 딜레이(초)</label><input type="number" id="cfg_pre_delay" value="0.5" step="0.1" class="w-16 border text-right text-black"></div>
-                            <div class="flex justify-between items-center" title="회피 후 인터벌 (회피 이후 인터벌 시간, 초)"><label>회피 후 인터벌(초)</label><input type="number" id="cfg_interval_evade" value="0.5" step="0.1" class="w-16 border text-right text-black"></div>
-                            <div class="flex justify-between items-center" title="방어 후 인터벌 (방어 이후 인터벌 시간, 초)"><label>방어 후 인터벌(초)</label><input type="number" id="cfg_interval_block" value="0.8" step="0.1" class="w-16 border text-right text-black"></div>
-                            <div class="flex justify-between items-center" title="공격시 소모되는 스테미너"><label>공격 스테미너</label><input type="number" id="cfg_attack_cost" value="10" class="w-16 border text-right text-black"></div>
-                            <div class="flex justify-between items-center" title="회피시 소모되는 스테미너"><label>회피 스테미너</label><input type="number" id="cfg_evade_cost" value="5" class="w-16 border text-right text-black"></div>
-                            <div class="flex justify-between items-center" title="초당 스테미너 회복량"><label>스테미너 회복/s</label><input type="number" id="cfg_stamina_regen" value="1" class="w-16 border text-right text-black"></div>
-                            <div class="flex justify-between items-center" title="인터벌 상태일 때 스테미너 회복 보너스 배율"><label>인터벌 회복 보너스(x)</label><input type="number" id="cfg_interval_stamina_bonus" value="2.0" step="0.1" class="w-16 border text-right text-black"></div>
-                        </div>
-
-                        <h3 class="font-bold text-slate-300 text-xs border-b border-slate-600 pb-1">⚙️ 몸싸움 & 물리</h3>
-                        <div class="grid grid-cols-2 gap-x-4 gap-y-1">
-                            <div class="flex justify-between items-center" title="적군의 차단 영역 비율"><label>적군 차단 면적(%)</label><input type="number" id="cfg_enemy_block_area" value="90" step="1" class="w-16 border text-right text-black"></div>
-                            <div class="flex justify-between items-center" title="적군 이동시 감속 최대 비율"><label>적군 최대 감속(%)</label><input type="number" id="cfg_enemy_max_slow" value="70" step="1" class="w-16 border text-right text-black"></div>
-                            <div class="flex justify-between items-center" title="아군 통과 가능 면적 비율"><label>아군 통과 면적(%)</label><input type="number" id="cfg_ally_pass_area" value="60" step="1" class="w-16 border text-right text-black"></div>
-                            <div class="flex justify-between items-center" title="아군 이동시 감속 최대 비율"><label>아군 최대 감속(%)</label><input type="number" id="cfg_ally_max_slow" value="20" step="1" class="w-16 border text-right text-black"></div>
-                            <div class="flex justify-between items-center" title="밀쳐짐 최대 거리"><label>밀쳐짐 최대 거리</label><input type="number" id="cfg_knockback_max_dist" value="1.0" step="0.1" class="w-16 border text-right text-black"></div>
-                            <div class="flex justify-between items-center" title="사망시 밀쳐짐 배율"><label>사망 밀쳐짐 배율</label><input type="number" id="cfg_death_knockback_mult" value="1.5" step="0.1" class="w-16 border text-right text-black"></div>
-                            <div class="flex justify-between items-center" title="밀쳐짐 힘 배율 (값을 크게하면 밀쳐짐 증가)"><label>밀쳐짐 힘 배율</label><input type="number" id="cfg_knockback_force_mult" value="600" step="50" class="w-16 border text-right text-black"></div>
-                            <div class="flex justify-between items-center" title="밀쳐짐 감쇠율(0~1, 값을 작게하면 감쇠 빠름)"><label>밀쳐짐 감쇠율</label><input type="number" id="cfg_knockback_decay" value="0.90" step="0.01" class="w-16 border text-right text-black"></div>
-                            <div class="flex justify-between items-center" title="밀쳐짐 중 충돌 무시 임계값(이 값 이상이면 충돌 처리 무시)"><label>충돌 무시 임계값</label><input type="number" id="cfg_knockback_collision_threshold" value="1.0" step="0.1" class="w-16 border text-right text-black"></div>
-                        </div>
+                    <div class="flex gap-1 border-b border-slate-600">
+                        <button class="sub-tab-btn active" data-tab="squad-ai">부대AI</button>
+                        <button class="sub-tab-btn" data-tab="combat">전투밸런스</button>
                     </div>
                     
                     <!-- Tab Content: 부대 AI -->
-                    <div id="tab-formation" class="config-tab-content space-y-3">
-                        <h3 class="font-bold text-slate-300 text-xs border-b border-slate-600 pb-1">⚙️ 부대 AI 설정</h3>
-                        <div class="text-xs text-slate-400 p-2 text-center">
-                            부대 AI 설정은 추후 추가 예정입니다.
+                    <div id="sub-tab-squad-ai" class="sub-tab-content active">
+                        <div class="mt-2">
+                            <h3 class="font-bold text-slate-300 text-sm border-b border-slate-600 pb-1">⚙️ 부대 AI 설정</h3>
+                            <div class="text-sm text-slate-400 p-2 text-center">
+                                부대 AI 설정은 향후 추가 예정입니다.
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Tab Content: 전투 밸런스 -->
+                    <div id="sub-tab-combat" class="sub-tab-content">
+                        <div class="space-y-3 mt-2">
+                            <h3 class="font-bold text-slate-300 text-sm border-b border-slate-600 pb-1">⚙️ 행동 결정 (AI)</h3>
+                            <div class="grid grid-cols-2 gap-x-4 gap-y-1">
+                                <div class="flex justify-between items-center" title="AI가 공격을 선택할 최대 확률 (0~1)"><label class="text-sm">최대 공격확률</label><input type="number" id="cfg_atk_prob_max" value="1.0" step="0.1" class="w-16 border text-right text-black text-sm"></div>
+                                <div class="flex justify-between items-center" title="AI가 공격을 선택할 최소 확률 (0~1)"><label class="text-sm">최소 공격확률</label><input type="number" id="cfg_atk_prob_min" value="0.3" step="0.1" class="w-16 border text-right text-black text-sm"></div>
+                                <div class="flex justify-between items-center col-span-2" title="사기가 이 값 이하일 때 최소 확률 적용"><label class="text-sm">사기 임계값(낮을 때 최소확률)</label><input type="number" id="cfg_morale_threshold" value="0.2" step="0.1" class="w-16 border text-right text-black text-sm"></div>
+                            </div>
+
+                            <h3 class="font-bold text-slate-300 text-sm border-b border-slate-600 pb-1">⚙️ 공격력</h3>
+                            <div class="grid grid-cols-2 gap-x-4 gap-y-1">
+                                <div class="flex justify-between items-center" title="0에 가까울수록 영향없음"><label class="text-indigo-300 font-bold text-sm">사기 영향력(0~1)</label><input type="number" id="cfg_morale_inf" value="0.4" step="0.1" class="w-16 border text-right text-black bg-indigo-50 text-sm"></div>
+                                <div class="flex justify-between items-center" title="0에 가까울수록 영향없음"><label class="text-indigo-300 font-bold text-sm">스테미너 영향력</label><input type="number" id="cfg_stamina_inf" value="0.3" step="0.1" class="w-16 border text-right text-black bg-indigo-50 text-sm"></div>
+                            </div>
+
+                            <h3 class="font-bold text-slate-300 text-sm border-b border-slate-600 pb-1">⚙️ 회피</h3>
+                            <div class="grid grid-cols-2 gap-x-4 gap-y-1">
+                                <div class="flex justify-between items-center" title="기본 회피 성공 확률 (0~1)"><label class="text-sm">기본 회피율</label><input type="number" id="cfg_base_evade" value="0.1" step="0.05" class="w-16 border text-right text-black text-sm"></div>
+                                <div class="flex justify-between items-center" title="회피를 선택할 때 기본 회피율에 적용되는 보정 배율"><label class="text-sm">회피 선택 보정(x)</label><input type="number" id="cfg_evade_bonus" value="2.0" step="0.1" class="w-16 border text-right text-black text-sm"></div>
+                                <div class="flex justify-between items-center" title="방패 보유시 회피율에 적용되는 페널티 배율"><label class="text-sm">방패 회피 페널티</label><input type="number" id="cfg_shield_pen" value="0.5" step="0.1" class="w-16 border text-right text-black text-sm"></div>
+                                <div class="flex justify-between items-center" title="갑옷 보유시 회피율에 적용되는 페널티 배율"><label class="text-sm">갑옷 회피 페널티</label><input type="number" id="cfg_armor_pen" value="0.5" step="0.1" class="w-16 border text-right text-black text-sm"></div>
+                            </div>
+
+                            <h3 class="font-bold text-slate-300 text-sm border-b border-slate-600 pb-1">⚙️ 방어 & 피해 감소</h3>
+                            <div class="grid grid-cols-2 gap-x-4 gap-y-1">
+                                <div class="flex justify-between items-center" title="방어를 선택할 때 방어력에 적용되는 보정 배율"><label class="text-sm">방어 선택 보정(x)</label><input type="number" id="cfg_def_bonus" value="1.5" step="0.1" class="w-16 border text-right text-black text-sm"></div>
+                                <div class="flex justify-between items-center" title="방패 기본 배율 (방패 값에 적용되는 배율)"><label class="text-sm">방패 기본 배율</label><input type="number" id="cfg_shield_base_mult" value="1.5" step="0.1" class="w-16 border text-right text-black text-sm"></div>
+                                <div class="flex justify-between items-center" title="갑옷 기본 배율 (갑옷 값에 적용되는 배율)"><label class="text-sm">갑옷 기본 배율</label><input type="number" id="cfg_armor_base_mult" value="1.0" step="0.1" class="w-16 border text-right text-black text-sm"></div>
+                                <div class="flex justify-between items-center" title="방어태세 보너스 (방어태세일 때 추가 방어력 배율)"><label class="text-sm">방어태세 보너스(x)</label><input type="number" id="cfg_defending_bonus" value="1.3" step="0.1" class="w-16 border text-right text-black text-sm"></div>
+                                <div class="flex justify-between items-center" title="방어 지속 시간 (방어태세가 유지되는 시간, 초)"><label class="text-sm">방어 지속 시간(초)</label><input type="number" id="cfg_defending_duration" value="2.0" step="0.1" class="w-16 border text-right text-black text-sm"></div>
+                                <div class="flex justify-between items-center" title="전체 피해 감소 보정 (모든 피해에 적용되는 배율)"><label class="text-sm">전체 피해 감소(x)</label><input type="number" id="cfg_damage_reduction" value="0.5" step="0.1" class="w-16 border text-right text-black text-sm"></div>
+                            </div>
+
+                            <h3 class="font-bold text-slate-300 text-sm border-b border-slate-600 pb-1">⚙️ 인터벌 & 비용</h3>
+                            <div class="grid grid-cols-2 gap-x-4 gap-y-1">
+                                <div class="flex justify-between items-center" title="공격 전 딜레이 시간 (초)"><label class="text-sm">공격 전 딜레이(초)</label><input type="number" id="cfg_pre_delay" value="0.5" step="0.1" class="w-16 border text-right text-black text-sm"></div>
+                                <div class="flex justify-between items-center" title="회피 후 인터벌 (회피 이후 인터벌 시간, 초)"><label class="text-sm">회피 후 인터벌(초)</label><input type="number" id="cfg_interval_evade" value="0.5" step="0.1" class="w-16 border text-right text-black text-sm"></div>
+                                <div class="flex justify-between items-center" title="방어 후 인터벌 (방어 이후 인터벌 시간, 초)"><label class="text-sm">방어 후 인터벌(초)</label><input type="number" id="cfg_interval_block" value="0.8" step="0.1" class="w-16 border text-right text-black text-sm"></div>
+                                <div class="flex justify-between items-center" title="공격시 소모되는 스테미너"><label class="text-sm">공격 스테미너</label><input type="number" id="cfg_attack_cost" value="10" class="w-16 border text-right text-black text-sm"></div>
+                                <div class="flex justify-between items-center" title="회피시 소모되는 스테미너"><label class="text-sm">회피 스테미너</label><input type="number" id="cfg_evade_cost" value="5" class="w-16 border text-right text-black text-sm"></div>
+                                <div class="flex justify-between items-center" title="초당 스테미너 회복량"><label class="text-sm">스테미너 회복/s</label><input type="number" id="cfg_stamina_regen" value="1" class="w-16 border text-right text-black text-sm"></div>
+                                <div class="flex justify-between items-center" title="인터벌 상태일 때 스테미너 회복 보너스 배율"><label class="text-sm">인터벌 회복 보너스(x)</label><input type="number" id="cfg_interval_stamina_bonus" value="2.0" step="0.1" class="w-16 border text-right text-black text-sm"></div>
+                            </div>
+
+                            <h3 class="font-bold text-slate-300 text-sm border-b border-slate-600 pb-1">⚙️ 몸싸움 & 물리</h3>
+                            <div class="grid grid-cols-2 gap-x-4 gap-y-1">
+                                <div class="flex justify-between items-center" title="적군의 차단 영역 비율"><label class="text-sm">적군 차단 면적(%)</label><input type="number" id="cfg_enemy_block_area" value="90" step="1" class="w-16 border text-right text-black text-sm"></div>
+                                <div class="flex justify-between items-center" title="적군 이동시 감속 최대 비율"><label class="text-sm">적군 최대 감속(%)</label><input type="number" id="cfg_enemy_max_slow" value="70" step="1" class="w-16 border text-right text-black text-sm"></div>
+                                <div class="flex justify-between items-center" title="아군 통과 가능 면적 비율"><label class="text-sm">아군 통과 면적(%)</label><input type="number" id="cfg_ally_pass_area" value="60" step="1" class="w-16 border text-right text-black text-sm"></div>
+                                <div class="flex justify-between items-center" title="아군 이동시 감속 최대 비율"><label class="text-sm">아군 최대 감속(%)</label><input type="number" id="cfg_ally_max_slow" value="20" step="1" class="w-16 border text-right text-black text-sm"></div>
+                                <div class="flex justify-between items-center" title="데미지 비율에 곱해지는 밀쳐짐 기본 배율 (데미지/최대체력 × 이 값 = 기본 밀쳐짐 거리)"><label class="text-sm">밀쳐짐 배수</label><input type="number" id="cfg_knockback_max_dist" value="1.0" step="0.1" class="w-16 border text-right text-black text-sm"></div>
+                                <div class="flex justify-between items-center" title="사망시 밀쳐짐 배율"><label class="text-sm">사망 밀쳐짐 배율</label><input type="number" id="cfg_death_knockback_mult" value="1.5" step="0.1" class="w-16 border text-right text-black text-sm"></div>
+                                <div class="flex justify-between items-center" title="밀쳐짐 힘 배율 (값을 크게하면 밀쳐짐 증가)"><label class="text-sm">밀쳐짐 힘 배율</label><input type="number" id="cfg_knockback_force_mult" value="600" step="50" class="w-16 border text-right text-black text-sm"></div>
+                                <div class="flex justify-between items-center" title="밀쳐짐 감쇠율(0~1, 값을 작게하면 감쇠 빠름)"><label class="text-sm">밀쳐짐 감쇠율</label><input type="number" id="cfg_knockback_decay" value="0.90" step="0.01" class="w-16 border text-right text-black text-sm"></div>
+                                <div class="flex justify-between items-center" title="밀쳐짐 중 충돌 무시 임계값(이 값 이상이면 충돌 처리 무시)"><label class="text-sm">충돌 무시 임계값</label><input type="number" id="cfg_knockback_collision_threshold" value="1.0" step="0.1" class="w-16 border text-right text-black text-sm"></div>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -199,52 +302,16 @@
     <script src="js/config/constants.js"></script>
     <script src="js/config/unitPresets.js"></script>
     <script src="js/config/globalConfig.js"></script>
-    <script src="js/managers/SettingsManager.js"></script>
     <script src="js/core/Unit.js"></script>
+    <script src="js/core/Formation.js"></script>
+    <script src="js/core/FormationManager.js"></script>
+    <script src="js/core/ChargeSystem.js"></script>
+    <script src="js/core/SquadAI.js"></script>
+    <script src="js/core/Squad.js"></script>
+    <script src="js/managers/SettingsManager.js"></script>
+    <script src="js/managers/Camera.js"></script>
     <script src="js/core/BattleSimulator.js"></script>
-    <script>
-// Tab switching
-document.querySelectorAll('.config-tab-btn').forEach(btn => {
-    btn.addEventListener('click', () => {
-        const tabName = btn.dataset.tab;
-        
-        // Remove active class from all buttons and tabs
-        document.querySelectorAll('.config-tab-btn').forEach(b => b.classList.remove('active'));
-        document.querySelectorAll('.config-tab-content').forEach(t => t.classList.remove('active'));
-        
-        // Add active class to clicked button and corresponding tab
-        btn.classList.add('active');
-        document.getElementById(`tab-${tabName}`).classList.add('active');
-    });
-});
-
-// Initialize application
-const sim = new BattleSimulator();
-
-document.getElementById('btnApply').onclick = () => {
-    sim.settingsManager.saveCurrentSettings();
-    sim.applyStats();
-};
-
-document.getElementById('btnSaveSettings').onclick = () => {
-    sim.settingsManager.exportToFile();
-};
-
-document.getElementById('btnPause').onclick = () => sim.togglePause();
-document.getElementById('btnReset').onclick = () => sim.reset();
-document.getElementById('speedSelect').onchange = (e) => sim.setSpeed(e.target.value);
-document.getElementById('preset_A').onchange = (e) => sim.loadPreset('A', e.target.value);
-document.getElementById('preset_B').onchange = (e) => sim.loadPreset('B', e.target.value);
-document.getElementById('btnRestart').onclick = () => {
-    sim.settingsManager.saveCurrentSettings();
-    sim.applyStats();
-};
-document.getElementById('btnClearLog').onclick = () => {
-    document.getElementById('logContainer').innerHTML = '';
-};
-
-window.sim = sim;
-    </script>
+    <script src="js/main.js"></script>
 </body>
 </html>
 

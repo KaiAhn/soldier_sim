@@ -1,169 +1,30 @@
-// Battle Simulator - Main game loop and simulation management
+// Battle Simulator - Simulation loop and rendering only
 class BattleSimulator {
-    constructor() {
+    constructor(settingsManager) {
         this.canvas = document.getElementById('battleCanvas');
+        if (!this.canvas) {
+            console.error('BattleSimulator: battleCanvas element not found!');
+            return;
+        }
         this.ctx = this.canvas.getContext('2d');
         this.logContainer = document.getElementById('logContainer');
         
         this.units = [];
+        this.squads = [];
         this.running = false;
         this.paused = false;
         this.lastTime = 0;
         this.timeScale = 1.0;
         this.elapsedTime = 0;
 
-        // Camera system
-        this.cameraX = 0;
-        this.cameraY = 0;
-        this.cameraZoom = 1.0;
-        this.minZoom = 0.1;
-        this.maxZoom = 3.0;
-        this.cameraSpeed = 300; // pixels per second
-        this.isDragging = false;
-        this.dragStartX = 0;
-        this.dragStartY = 0;
-        this.dragCameraStartX = 0;
-        this.dragCameraStartY = 0;
-        this.keysPressed = {}; // For arrow key navigation
-
-        this.settingsManager = new SettingsManager();
-        this.initPresets();
+        this.settingsManager = settingsManager; // Reference to SettingsManager
         this.setupAutoSave();
-        this.setupCamera();
         this.resize();
         window.addEventListener('resize', () => this.resize());
         
         window.addEventListener('keydown', (e) => {
             if (e.code === 'Space') { e.preventDefault(); this.togglePause(); }
-            // Arrow keys
-            if (e.code === 'ArrowLeft' || e.code === 'ArrowRight' || 
-                e.code === 'ArrowUp' || e.code === 'ArrowDown') {
-                this.keysPressed[e.code] = true;
-                e.preventDefault();
-            }
         });
-        
-        window.addEventListener('keyup', (e) => {
-            if (e.code === 'ArrowLeft' || e.code === 'ArrowRight' || 
-                e.code === 'ArrowUp' || e.code === 'ArrowDown') {
-                this.keysPressed[e.code] = false;
-            }
-        });
-        
-        // Start render loop for camera (even when not running)
-        this.lastTime = performance.now();
-        requestAnimationFrame((t) => this.loop(t));
-    }
-
-    setupCamera() {
-        // Mouse drag
-        this.canvas.addEventListener('mousedown', (e) => {
-            if (e.button === 0) { // Left mouse button
-                this.isDragging = true;
-                this.dragStartX = e.clientX;
-                this.dragStartY = e.clientY;
-                this.dragCameraStartX = this.cameraX;
-                this.dragCameraStartY = this.cameraY;
-                this.canvas.style.cursor = 'grabbing';
-            }
-        });
-
-        this.canvas.addEventListener('mousemove', (e) => {
-            if (this.isDragging) {
-                const deltaX = e.clientX - this.dragStartX;
-                const deltaY = e.clientY - this.dragStartY;
-                this.cameraX = this.dragCameraStartX + deltaX;
-                this.cameraY = this.dragCameraStartY + deltaY;
-            }
-        });
-
-        this.canvas.addEventListener('mouseup', (e) => {
-            if (e.button === 0) {
-                this.isDragging = false;
-                this.canvas.style.cursor = 'default';
-            }
-        });
-
-        this.canvas.addEventListener('mouseleave', () => {
-            this.isDragging = false;
-            this.canvas.style.cursor = 'default';
-        });
-
-        // Touch support (for mobile)
-        this.canvas.addEventListener('touchstart', (e) => {
-            if (e.touches.length === 1) {
-                const touch = e.touches[0];
-                this.isDragging = true;
-                this.dragStartX = touch.clientX;
-                this.dragStartY = touch.clientY;
-                this.dragCameraStartX = this.cameraX;
-                this.dragCameraStartY = this.cameraY;
-            }
-            e.preventDefault();
-        });
-
-        this.canvas.addEventListener('touchmove', (e) => {
-            if (this.isDragging && e.touches.length === 1) {
-                const touch = e.touches[0];
-                const deltaX = touch.clientX - this.dragStartX;
-                const deltaY = touch.clientY - this.dragStartY;
-                this.cameraX = this.dragCameraStartX + deltaX;
-                this.cameraY = this.dragCameraStartY + deltaY;
-            }
-            e.preventDefault();
-        });
-
-        this.canvas.addEventListener('touchend', (e) => {
-            this.isDragging = false;
-            e.preventDefault();
-        });
-
-        // Mouse wheel zoom
-        this.canvas.addEventListener('wheel', (e) => {
-            e.preventDefault();
-            
-            const zoomFactor = 0.1;
-            const delta = e.deltaY > 0 ? -zoomFactor : zoomFactor;
-            const newZoom = Math.max(this.minZoom, Math.min(this.maxZoom, this.cameraZoom + delta));
-            
-            if (newZoom !== this.cameraZoom) {
-                // Zoom towards mouse position
-                const rect = this.canvas.getBoundingClientRect();
-                const mouseX = e.clientX - rect.left;
-                const mouseY = e.clientY - rect.top;
-                
-                // Convert screen coordinates to world coordinates
-                const worldX = (mouseX - this.cameraX) / this.cameraZoom;
-                const worldY = (mouseY - this.cameraY) / this.cameraZoom;
-                
-                // Update zoom
-                const oldZoom = this.cameraZoom;
-                this.cameraZoom = newZoom;
-                
-                // Adjust camera position so the point under the mouse stays in the same screen position
-                const newWorldX = (mouseX - this.cameraX) / this.cameraZoom;
-                const newWorldY = (mouseY - this.cameraY) / this.cameraZoom;
-                this.cameraX += (newWorldX - worldX) * this.cameraZoom;
-                this.cameraY += (newWorldY - worldY) * this.cameraZoom;
-            }
-        }, { passive: false });
-    }
-
-    updateCamera(dt) {
-        // Arrow key navigation (speed adjusted by zoom level)
-        const moveSpeed = this.cameraSpeed / this.cameraZoom;
-        if (this.keysPressed['ArrowLeft']) {
-            this.cameraX -= moveSpeed * dt;
-        }
-        if (this.keysPressed['ArrowRight']) {
-            this.cameraX += moveSpeed * dt;
-        }
-        if (this.keysPressed['ArrowUp']) {
-            this.cameraY -= moveSpeed * dt;
-        }
-        if (this.keysPressed['ArrowDown']) {
-            this.cameraY += moveSpeed * dt;
-        }
     }
 
     setupAutoSave() {
@@ -195,80 +56,14 @@ class BattleSimulator {
         });
     }
 
-    updatePresetSelectors() {
-        const selA = document.getElementById('preset_A');
-        const selB = document.getElementById('preset_B');
-        
-        selA.innerHTML = '<option value="">선택...</option>';
-        selB.innerHTML = '<option value="">선택...</option>';
-        
-        for (let name in UNIT_PRESETS) {
-            let optA = document.createElement('option');
-            optA.value = name; optA.innerText = name;
-            selA.appendChild(optA);
-            
-            let optB = document.createElement('option');
-            optB.value = name; optB.innerText = name;
-            selB.appendChild(optB);
-        }
-    }
-
-    async initPresets() {
-        this.updatePresetSelectors();
-        
-        // Try to load settings from file or LocalStorage
-        const loaded = await this.settingsManager.loadFromFile();
-        if (loaded) {
-            this.settingsManager.applySettings();
-            // If preset is selected in settings, load it
-            const settings = this.settingsManager.getSettings();
-            if (settings && settings.teamA && settings.teamA.selectedPreset) {
-                // Preset is already applied via applySettings, but we ensure it's selected
-                const presetA = document.getElementById('preset_A');
-                if (presetA && presetA.value !== settings.teamA.selectedPreset) {
-                    presetA.value = settings.teamA.selectedPreset;
-                }
-            }
-            if (settings && settings.teamB && settings.teamB.selectedPreset) {
-                const presetB = document.getElementById('preset_B');
-                if (presetB && presetB.value !== settings.teamB.selectedPreset) {
-                    presetB.value = settings.teamB.selectedPreset;
-                }
-            }
-        } else {
-            // Fallback to default values
-            this.loadPreset('A', '징집병');
-            this.loadPreset('B', '중보병');
-            this.settingsManager.saveCurrentSettings();
-        }
-    }
-
-    loadPreset(team, presetName) {
-        if (!presetName) return;
-        const stats = UNIT_PRESETS[presetName];
-        const setVal = (id, val) => {
-            const elem = document.getElementById(id);
-            if (elem) elem.value = val;
-        };
-        
-        setVal(`preset_${team}`, presetName);
-        setVal(`hp_${team}`, stats.hp);
-        setVal(`atk_${team}`, stats.atk);
-        setVal(`as_${team}`, stats.as);
-        setVal(`rng_${team}`, stats.rng);
-        setVal(`spd_${team}`, stats.spd);
-        setVal(`shd_${team}`, stats.shd);
-        setVal(`arm_${team}`, stats.arm);
-        setVal(`mst_${team}`, stats.mst);
-        setVal(`mor_${team}`, stats.mor);
-        if (stats.mass !== undefined) {
-            setVal(`mass_${team}`, stats.mass);
-        }
-        
-        this.settingsManager.saveCurrentSettings();
+    
+    applyStatsAndStart() {
+        // SettingsManager가 units를 생성하고, 여기서는 시작만
+        this.applyStats();
     }
 
     resize() {
+        if (!this.canvas) return;
         this.canvas.width = this.canvas.parentElement.clientWidth;
         this.canvas.height = this.canvas.parentElement.clientHeight;
         this.render();
@@ -283,134 +78,61 @@ class BattleSimulator {
         this.logContainer.scrollTop = this.logContainer.scrollHeight;
     }
 
-    getStats(team) {
-        const stats = {
-            hp: Number(document.getElementById(`hp_${team}`).value),
-            atk: Number(document.getElementById(`atk_${team}`).value),
-            as: Number(document.getElementById(`as_${team}`).value),
-            rng: Number(document.getElementById(`rng_${team}`).value),
-            spd: Number(document.getElementById(`spd_${team}`).value),
-            shd: Number(document.getElementById(`shd_${team}`).value),
-            arm: Number(document.getElementById(`arm_${team}`).value),
-            mst: Number(document.getElementById(`mst_${team}`).value),
-            mor: Number(document.getElementById(`mor_${team}`).value),
-        };
-        
-        // 병종별 질량 자동 계산 (인간 기본 질량 10 + 장비 질량)
-        // 프리셋에서 가져오거나, 없으면 UI 값 또는 계산값 사용
-        const presetSelect = document.getElementById(`preset_${team}`);
-        const presetName = presetSelect ? presetSelect.value : null;
-        if (presetName && UNIT_PRESETS[presetName] && UNIT_PRESETS[presetName].mass) {
-            stats.mass = UNIT_PRESETS[presetName].mass;
-        } else {
-            // UI에서 직접 입력한 값이 있으면 사용
-            const uiMass = Number(document.getElementById(`mass_${team}`).value);
-            if (uiMass && uiMass > 0) {
-                stats.mass = uiMass;
-            } else {
-                // 기본값: 인간 기본 질량 10 + 방패와 갑옷을 고려한 장비 질량
-                const baseHumanMass = 10;
-                const equipmentMass = 1 + (stats.shd * 0.5) + (stats.arm * 0.3);
-                stats.mass = baseHumanMass + equipmentMass;
-            }
-        }
-        
-        return stats;
-    }
-
     applyStats() {
+        // 모든 세팅 작업은 SettingsManager에서 처리
+        // 여기서는 단순히 SettingsManager가 생성한 units를 받아서 사용
         this.reset();
-        const cx = this.canvas.width / 2;
-        const cy = this.canvas.height / 2;
+        this.settingsManager.updateUnits();
         
-        const statsA = this.getStats('A');
-        const statsB = this.getStats('B');
-        const countA = Math.max(1, Math.min(10, Number(document.getElementById('count_A').value) || 1));
-        const countB = Math.max(1, Math.min(10, Number(document.getElementById('count_B').value) || 1));
+        const countA = this.units.filter(u => u.team === 'A').length;
+        const countB = this.units.filter(u => u.team === 'B').length;
         
-        const spawnDist = (statsA.rng * RANGE_SCALE) + (statsB.rng * RANGE_SCALE) + 100;
-        
-        this.units = [];
-        let unitId = 1;
-        
-        const spacingA = 50;
-        const startYA = cy - ((countA - 1) * spacingA / 2);
-        for (let i = 0; i < countA; i++) {
-            const unit = new Unit(unitId++, 'A', cx - spawnDist/2, startYA + i * spacingA, statsA);
-            unit.angle = 0;
-            this.units.push(unit);
-        }
-        
-        const spacingB = 50;
-        const startYB = cy - ((countB - 1) * spacingB / 2);
-        for (let i = 0; i < countB; i++) {
-            const unit = new Unit(unitId++, 'B', cx + spawnDist/2, startYB + i * spacingB, statsB);
-            unit.angle = Math.PI;
-            this.units.push(unit);
-        }
-        
-        this.log(`전투 시작 (Blue: ${countA}명 vs Red: ${countB}명)`, "font-bold text-center mt-2 mb-2 bg-slate-700");
+        this.log(`전투 시작: Team A (${countA}명) vs Team B (${countB}명)`, 'log-attack font-bold');
         this.start();
-    }
-    
-    findNearestEnemy(unit) {
-        let nearest = null;
-        let nearestDist = Infinity;
-        
-        for (let enemy of this.units) {
-            if (enemy.team === unit.team || enemy.state === STATES.DEAD) continue;
-            
-            const dist = unit.distanceTo(enemy);
-            if (dist < nearestDist) {
-                nearestDist = dist;
-                nearest = enemy;
-            }
-        }
-        
-        return nearest;
-    }
-
-    start() {
-        if (this.running) return;
-        this.running = true;
-        this.paused = false;
-        this.lastTime = performance.now();
-        document.getElementById('winnerOverlay').classList.add('hidden');
-        requestAnimationFrame((t) => this.loop(t));
     }
 
     reset() {
-        this.running = false;
-        this.elapsedTime = 0;
         this.units = [];
-        this.cameraX = 0;
-        this.cameraY = 0;
-        this.cameraZoom = 1.0;
-        this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
+        this.squads = [];
+        this.running = false;
+        this.paused = false;
+        this.elapsedTime = 0;
         this.logContainer.innerHTML = '';
-        document.getElementById('btnPause').innerText = "일시정지";
-        document.getElementById('winnerOverlay').classList.add('hidden');
+    }
+
+    start() {
+        this.running = true;
+        this.lastTime = performance.now();
+        this.loop(this.lastTime);
     }
 
     togglePause() {
         this.paused = !this.paused;
-        const btn = document.getElementById('btnPause');
-        btn.innerText = this.paused ? "재개" : "일시정지";
-        btn.classList.toggle('bg-yellow-600');
-        btn.classList.toggle('bg-green-600');
-        if (!this.paused) {
+        if (!this.paused && this.running) {
             this.lastTime = performance.now();
-            requestAnimationFrame((t) => this.loop(t));
+            this.loop(this.lastTime);
         }
     }
 
-    setSpeed(val) { this.timeScale = parseFloat(val); }
+    setSpeed(speed) {
+        this.timeScale = parseFloat(speed) || 1.0;
+    }
 
     endGame(winnerTeam) {
         this.running = false;
+        this.paused = false;
+        
+        const winnerText = winnerTeam === 'A' ? 'Team A 승리!' : 'Team B 승리!';
+        this.log(winnerText, 'log-attack font-bold text-yellow-400');
+        
+        this.showEndGameOverlay(winnerTeam);
+    }
+
+    showEndGameOverlay(winnerTeam) {
         const overlay = document.getElementById('winnerOverlay');
         const statsDiv = document.getElementById('resultStats');
-        overlay.classList.remove('hidden');
+        
+        if (!overlay || !statsDiv) return;
         
         const teamAUnits = this.units.filter(u => u.team === 'A');
         const teamBUnits = this.units.filter(u => u.team === 'B');
@@ -461,34 +183,31 @@ class BattleSimulator {
         
         statsHTML += '</div>';
         statsDiv.innerHTML = statsHTML;
+        
+        overlay.classList.remove('hidden');
     }
 
     loop(timestamp) {
+        if (!this.running || this.paused) return;
         const dtRaw = (timestamp - this.lastTime) / 1000;
         this.lastTime = timestamp;
-        const dt = Math.min(dtRaw, 0.1);
-        
-        // Update camera (always, even when paused)
-        this.updateCamera(dt);
-
-        if (!this.running || this.paused) {
-            this.render();
-            requestAnimationFrame((t) => this.loop(t));
-            return;
-        }
-        
-        const dtScaled = dt * this.timeScale;
-        this.elapsedTime += dtScaled;
+        const dt = Math.min(dtRaw, 0.1) * this.timeScale;
+        this.elapsedTime += dt;
 
         const config = GlobalConfig.get();
         
+        // Update squads (SquadAI, FormationManager)
+        for (let squad of this.squads) {
+            squad.update(dt, this.squads, config);
+        }
+        
         for (let unit of this.units) {
             if (unit.state !== STATES.DEAD) {
-                unit.update(dtScaled, this.units, config);
+                unit.update(dt, this.units, config);
             }
         }
         
-        this.resolveCollisions(dtScaled, config);
+        this.resolveCollisions(dt, config);
         
         const teamAAlive = this.units.filter(u => u.team === 'A' && u.state !== STATES.DEAD).length;
         const teamBAlive = this.units.filter(u => u.team === 'B' && u.state !== STATES.DEAD).length;
@@ -556,51 +275,68 @@ class BattleSimulator {
         const ctx = this.ctx;
         ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
         
-        // Apply camera transform
+        // 배경 렌더링 (카메라 변환 전에 처리, 카메라 변환 적용하지 않은 컨텍스트에서)
         ctx.save();
-        ctx.translate(this.cameraX, this.cameraY);
-        ctx.scale(this.cameraZoom, this.cameraZoom);
-        
-        // Calculate grid bounds with camera offset and zoom
-        const gridSize = 40;
-        const visibleWidth = this.canvas.width / this.cameraZoom;
-        const visibleHeight = this.canvas.height / this.cameraZoom;
-        const cameraWorldX = -this.cameraX / this.cameraZoom;
-        const cameraWorldY = -this.cameraY / this.cameraZoom;
-        
-        // Calculate visible world bounds
-        const worldLeft = cameraWorldX - visibleWidth * 0.5;
-        const worldRight = cameraWorldX + visibleWidth * 0.5;
-        const worldTop = cameraWorldY - visibleHeight * 0.5;
-        const worldBottom = cameraWorldY + visibleHeight * 0.5;
-        
-        // Align grid to gridSize boundaries
-        const startX = Math.floor(worldLeft / gridSize) * gridSize;
-        const endX = Math.ceil(worldRight / gridSize) * gridSize + gridSize;
-        const startY = Math.floor(worldTop / gridSize) * gridSize;
-        const endY = Math.ceil(worldBottom / gridSize) * gridSize + gridSize;
-        
-        // Draw grid
-        ctx.strokeStyle = "#334155";
-        ctx.lineWidth = 1 / this.cameraZoom; // Scale line width with zoom
-        ctx.beginPath();
-        for(let i = startX; i <= endX; i += gridSize) {
-            ctx.moveTo(i, startY);
-            ctx.lineTo(i, endY);
+        if (this.settingsManager && this.settingsManager.renderBackground) {
+            if (this.settingsManager.camera) {
+                const camera = this.settingsManager.camera;
+                this.settingsManager.renderBackground(ctx, camera.x, camera.y, camera.zoom, camera.showGrid);
+            } else {
+                // Fallback: 카메라가 없을 때 기본값 사용
+                this.settingsManager.renderBackground(ctx, 0, 0, 1.0, false);
+            }
         }
-        for(let i = startY; i <= endY; i += gridSize) {
-            ctx.moveTo(startX, i);
-            ctx.lineTo(endX, i);
+        ctx.restore();
+        
+        // 카메라 변환 적용 (유닛/포메이션 렌더링용)
+        ctx.save();
+        if (this.settingsManager && this.settingsManager.camera) {
+            this.settingsManager.camera.applyTransform(ctx);
+        } else {
+            // Fallback if camera not initialized
+            ctx.translate(this.canvas.width / 2, this.canvas.height / 2);
         }
-        ctx.stroke();
 
-        // Draw target lines
+        // Formation shapes (before units for proper layering)
+        this.squads.forEach(squad => {
+            if (!squad.formationManager || !squad.currentSlots || squad.currentSlots.length < 3) return;
+            
+            const points = squad.currentSlots.map(s => ({ x: s.x, y: s.y }));
+            const hull = getConvexHull(points);
+            
+            if (hull.length === 0) return;
+            
+            ctx.save();
+            
+            // Transition 중에는 주황색, 아니면 노란색
+            const isTransitioning = squad.formationManager.isInTransition();
+            ctx.fillStyle = isTransitioning ? "rgba(249, 115, 22, 0.1)" : "rgba(234, 179, 8, 0.15)"; 
+            ctx.strokeStyle = isTransitioning ? "rgba(249, 115, 22, 0.5)" : "rgba(234, 179, 8, 0.4)";
+            const cameraZoom = this.settingsManager && this.settingsManager.camera ? this.settingsManager.camera.zoom : 1.0;
+            ctx.lineWidth = 2 / cameraZoom;
+            ctx.setLineDash([5 / cameraZoom, 5 / cameraZoom]);
+            
+            ctx.beginPath();
+            ctx.moveTo(hull[0].x, hull[0].y);
+            for (let i = 1; i < hull.length; i++) {
+                ctx.lineTo(hull[i].x, hull[i].y);
+            }
+            ctx.closePath();
+            
+            ctx.fill(); 
+            ctx.stroke();
+            ctx.setLineDash([]);
+            ctx.restore();
+        });
+
+        // 타겟팅 라인
         this.units.forEach(u => {
             if (u.target && u.state !== STATES.DEAD && u.target.state !== STATES.DEAD) {
                 ctx.save();
                 ctx.strokeStyle = u.team === 'A' ? 'rgba(59, 130, 246, 0.5)' : 'rgba(239, 68, 68, 0.5)';
-                ctx.lineWidth = 2;
-                ctx.setLineDash([5, 5]);
+                const cameraZoom = this.settingsManager && this.settingsManager.camera ? this.settingsManager.camera.zoom : 1.0;
+                ctx.lineWidth = 2 / cameraZoom;
+                ctx.setLineDash([5 / cameraZoom, 5 / cameraZoom]);
                 ctx.beginPath();
                 ctx.moveTo(u.x, u.y);
                 ctx.lineTo(u.target.x, u.target.y);
@@ -610,12 +346,34 @@ class BattleSimulator {
             }
         });
 
-        // Draw units
+        // 유닛 렌더링
+        if (this.units.length === 0) {
+            console.warn('BattleSimulator.render: No units to render!');
+        } else {
+            // Debug: 첫 번째 유닛의 위치 확인
+            if (this.units.length > 0 && this.units[0]) {
+                const firstUnit = this.units[0];
+                if (!firstUnit._debugLogged) {
+                    console.log('First unit position:', { 
+                        x: firstUnit.x, 
+                        y: firstUnit.y, 
+                        team: firstUnit.team,
+                        cameraX: this.settingsManager?.camera?.x,
+                        cameraY: this.settingsManager?.camera?.y,
+                        cameraZoom: this.settingsManager?.camera?.zoom
+                    });
+                    firstUnit._debugLogged = true;
+                }
+            }
+        }
         this.units.forEach(u => {
-            u.draw(ctx);
+            if (u && typeof u.draw === 'function') {
+                u.draw(ctx);
+            } else {
+                console.warn('BattleSimulator.render: Unit missing or invalid:', u);
+            }
         });
         
         ctx.restore();
     }
 }
-

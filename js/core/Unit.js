@@ -815,20 +815,23 @@ class Unit {
             ctx.lineWidth = 1;
             ctx.strokeRect(barX, barY, barW, barH);
 
-            ctx.fillStyle = 'rgba(255,255,255,0.85)';
-            const bubbleX = drawX - 30;
-            const bubbleY = drawY - 45;
-            
-            ctx.beginPath(); 
-            if (ctx.roundRect) {
-                ctx.roundRect(bubbleX, bubbleY, 60, 18, 4);
-            } else {
-                ctx.rect(bubbleX, bubbleY, 60, 18);
+            // 말풍선은 showUnitIntents가 true일 때만 표시
+            if (window.sim && window.sim.showUnitIntents) {
+                ctx.fillStyle = 'rgba(255,255,255,0.85)';
+                const bubbleX = drawX - 30;
+                const bubbleY = drawY - 45;
+                
+                ctx.beginPath(); 
+                if (ctx.roundRect) {
+                    ctx.roundRect(bubbleX, bubbleY, 60, 18, 4);
+                } else {
+                    ctx.rect(bubbleX, bubbleY, 60, 18);
+                }
+                ctx.fill();
+                ctx.fillStyle = '#1e293b'; ctx.font = 'bold 9px sans-serif';
+                ctx.textAlign = 'center';             ctx.textBaseline = 'middle';
+                ctx.fillText(this.intent, drawX, bubbleY + 9);
             }
-            ctx.fill();
-            ctx.fillStyle = '#1e293b'; ctx.font = 'bold 9px sans-serif';
-            ctx.textAlign = 'center';             ctx.textBaseline = 'middle';
-            ctx.fillText(this.intent, drawX, bubbleY + 9);
 
             this.visualEffects.forEach(e => {
                 ctx.save(); ctx.globalAlpha = e.life;
